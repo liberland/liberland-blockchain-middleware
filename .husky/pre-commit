@@ -1,0 +1,5 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+./bin/run-scripts.js ./.githooks/pre-commit
+npx --no-install lint-staged

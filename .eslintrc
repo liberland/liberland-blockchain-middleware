@@ -1,0 +1,75 @@
+{
+	"extends": ["airbnb-base", "prettier"],
+	"env": {
+		"node": true
+	},
+	"parserOptions": {
+		"sourceType": "script"
+	},
+	"rules": {
+		"strict": ["error", "global"],
+		"func-names": ["warn", "as-needed"],
+		"no-console": "off",
+		"no-plusplus": [
+			"error",
+			{
+				"allowForLoopAfterthoughts": true
+			}
+		],
+		"no-underscore-dangle": [
+			"error",
+			{
+				"allow": ["_maxListeners"],
+				"allowAfterThis": false,
+				"allowAfterSuper": false,
+				"enforceInMethodNames": true
+			}
+		],
+		"no-restricted-syntax": [
+			"error",
+			{
+				"selector": "ForInStatement",
+				"message": "for..in loops iterate over the entire prototype chain, which is virtually never what you want. Use Object.{keys,values,entries}, and iterate over the resulting array."
+			},
+			{
+				"selector": "LabeledStatement",
+				"message": "Labels are a form of GOTO; using them makes code confusing and hard to maintain and understand."
+			},
+			{
+				"selector": "WithStatement",
+				"message": "`with` is disallowed in strict mode because it makes code impossible to predict and optimize."
+			}
+		],
+		"import/no-extraneous-dependencies": [
+			"error",
+			{
+				devDependencies: [
+					"bin/**",
+					".githooks/**",
+					"test/**",
+					"tests/**",
+					"spec/**",
+					"**/__tests__/**",
+					"**/__mocks__/**",
+					"test.{js,jsx}",
+					"test-*.{js,jsx}",
+					"**/*{.,_}{test,spec}.{js,jsx}",
+					"**/jest.config.js",
+					"**/jest.setup.js",
+					"**/vue.config.js",
+					"**/webpack.config.js",
+					"**/webpack.config.*.js",
+					"**/rollup.config.js",
+					"**/rollup.config.*.js",
+					"**/gulpfile.js",
+					"**/gulpfile.*.js",
+					"**/Gruntfile{,.js}",
+					"**/protractor.conf.js",
+					"**/protractor.conf.*.js",
+					"**/karma.conf.js"
+				],
+				optionalDependencies: false
+			}
+		]
+	}
+}

@@ -6,7 +6,20 @@ const { ApiPromise, WsProvider } = require("@polkadot/api");
 const config = require("../../config");
 
 const provider = new WsProvider(config.RPC_NODE_URL);
-const apiPromise = ApiPromise.create({ provider });
+const apiPromise = ApiPromise.create({
+	provider,
+	types: {
+		Coords: {
+			lat: "u64",
+			long: "u64",
+		},
+		LandMetadata: {
+			demarcation: "BoundedVec<Coords, u32>",
+			type: "Text",
+			status: "Text",
+		},
+	},
+});
 
 router.get(
 	"/plots/:walletAddress",
@@ -46,14 +59,30 @@ router.get(
 				owner: landSummaries[index].owner,
 			};
 			const landAttributes = landMetadataResult.toHuman();
-
 			try {
-				land.data = JSON.parse(landAttributes.data);
+				const rawLandAttributes = landMetadataResult.unwrap().data;
+				const metadataUint = api
+					.createType("LandMetadata", rawLandAttributes)
+					.toJSON();
+				const landMetadataObject = {
+					...metadataUint,
+					demarcation: metadataUint.demarcation.map((c) => ({
+						lat: c.lat / 10000000,
+						long: c.long / 10000000,
+					})),
+				};
+				land.data = landMetadataObject;
 			} catch (e) {
-				if (landAttributes) {
-					land.rawData = landAttributes.data;
+				// Uses legacy data representation
+				try {
+					land.data = JSON.parse(landAttributes.data);
+				} catch (legacyError) {
+					if (landAttributes) {
+						land.rawData = landAttributes.data;
+					}
+
+					land.error = legacyError.toString();
 				}
-				land.error = e.toString();
 			}
 
 			ownerLands.push(land);
@@ -103,16 +132,32 @@ router.get(
 				owner: landSummaries[index].owner,
 			};
 			const landAttributes = landMetadataResult.toHuman();
-
 			try {
-				land.data = JSON.parse(landAttributes.data);
+				const rawLandAttributes = landMetadataResult.unwrap().data;
+				const metadataUint = api
+					.createType("LandMetadata", rawLandAttributes)
+					.toJSON();
+				const landMetadataObject = {
+					...metadataUint,
+					demarcation: metadataUint.demarcation.map((c) => ({
+						lat: c.lat / 10000000,
+						long: c.long / 10000000,
+					})),
+				};
+				console.log("metadata");
+				console.log(landMetadataObject);
+				land.data = landMetadataObject;
 			} catch (e) {
-				console.log("y");
-				if (landAttributes) {
-					land.rawData = landAttributes.data;
-				}
+				// Uses legacy data representation
+				try {
+					land.data = JSON.parse(landAttributes.data);
+				} catch (legacyError) {
+					if (landAttributes) {
+						land.rawData = landAttributes.data;
+					}
 
-				land.error = e.toString();
+					land.error = legacyError.toString();
+				}
 			}
 
 			lands.push(land);

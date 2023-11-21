@@ -30,6 +30,7 @@ app.use(
 		credentials: true,
 	})
 );
+app.use(express.json());
 app.use(config.API_ROUTE_PREFIX, apiRouter);
 app.get('*', (req, res) => res.status(404).json({ error: 'Not Found' }));
 

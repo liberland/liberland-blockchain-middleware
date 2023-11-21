@@ -2,8 +2,9 @@
 
 const router = require("express").Router();
 const wrap = require("express-async-handler");
-const { ApiPromise, WsProvider } = require("@polkadot/api");
+const { ApiPromise, WsProvider, Keyring } = require("@polkadot/api");
 const config = require("../../config");
+const axios =require ('axios');
 
 const provider = new WsProvider(config.RPC_NODE_URL);
 const apiPromise = ApiPromise.create({
@@ -167,4 +168,100 @@ router.get(
 	})
 );
 
+router.post(
+	"/onboarding",
+	wrap(async (req, res) => {
+		const api = await apiPromise;
+		const { usingWalletAddress, userToken } = req.body;
+		let centralizedWalletAddress = null;
+		let centralizedId = null;
+		let centralizedAPI = axios.create({
+			baseURL: config.CENTRALIZED_API_URL,
+			withCredentials: false,
+		});
+		centralizedAPI.defaults.headers.common['X-token'] = userToken;
+
+		let centralizedCheckPromises = []
+
+		let checkEligibleForPersonIdPromise = new Promise((resolve, reject) => {
+			centralizedAPI.get('/e-residents/approved/me').then((result) => {
+				if(result.status !== 200) {
+					return reject('You are not a fully approved e-resident or citizen, therefore are not eligible to claim onboarding LLDs');
+				}
+				if(result.data.claimedOnboardingLld !== false) {
+					return reject('Person already claimed onboarding LLD');
+				}
+				centralizedId = result.data.personId;
+				return resolve(centralizedId)
+			}).catch(e =>{
+				return reject('Technical error when checking if fully approved e-resident who didnt claim LLD yet, please let the devs know');
+			})
+
+		})
+
+		centralizedCheckPromises.push(checkEligibleForPersonIdPromise)
+
+		let checkWalletAddressPromise = new Promise((resolve, reject) => {
+			centralizedAPI.get('/users/me').then((result) => {
+				centralizedWalletAddress = result.data.blockchainAddress;
+				if(centralizedWalletAddress !== usingWalletAddress) {
+					return reject('Wallet address provided and wallet address registered in profile do not match');
+				}
+				return resolve()
+			}).catch(e => {
+				return reject('Technical error when checking if used and registered wallet address match, please let the devs know');
+			});
+		})
+
+		centralizedCheckPromises.push(checkWalletAddressPromise)
+
+		let checkIfAlreadyHaveLLDPromise = new Promise((resolve, reject) => {
+			api.derive.balances.all(usingWalletAddress).then(result => {
+				if(result.availableBalance.toNumber() !== 0) {
+					return reject('User not eligible as account has LLDs already');
+				}
+				return resolve(result.availableBalance.toNumber())
+			}).catch(e => {
+				return reject('Technical error when checking wallet LLDs, please let the devs know');
+			})
+		})
+
+		centralizedCheckPromises.push(checkIfAlreadyHaveLLDPromise)
+
+		return Promise.all(centralizedCheckPromises).then(results => {
+			const keyring = new Keyring({ type: 'sr25519' });
+			const sender = keyring.addFromMnemonic(config.ONBOARDER_PHRASE)
+			const sendExtrinsic = api.tx.balances.transfer(usingWalletAddress, (2000000000000))
+
+			let sendLLDPromise = new Promise((resolve, reject) => sendExtrinsic.signAndSend(sender, ({ events = [], status }) => {
+				if (status.isInBlock) {
+					const err = events.find(({ event }) => api.events.system.ExtrinsicFailed.is(event))
+					if (err) {
+						if (err.event.data[0].isModule) {
+							const decoded = api.registry.findMetaError(err.event.data[0].asModule);
+							const { docs, method, section } = decoded;
+							reject({ docs, method, section })
+						} else {
+							reject(err.toString())
+						}
+					} else {
+						resolve(events)
+					}
+				}
+			}));
+
+			sendLLDPromise.then(result => {
+				centralizedAPI.patch('/e-residents/applications/' + centralizedId,  { claimedOnboardingLld: true }).then((result) => {
+					return res.status(200).send('All went well')
+				}).catch(e => {
+					return res.status(401).send(e)
+				})
+			}).catch(e => {
+				return res.status(401).send(e)
+			})
+		}).catch(e => {
+			return res.status(401).send(e)
+		})
+	})
+);
 module.exports = router;

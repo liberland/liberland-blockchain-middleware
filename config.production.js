@@ -7,4 +7,6 @@ module.exports = {
 		URL: 'https://api.liberverse.net',
 	},
 	IS_LIVE: true,
+	CENTRALIZED_API_URL: "https://api.liberland.org",
+	ONBOARDER_PHRASE: 'REPLACE ME WITH AUTO LLD ONBOARDER ACCOUNT PHRASE'
 };

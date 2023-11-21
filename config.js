@@ -12,6 +12,8 @@ const config = {
 	API_ROUTE_PREFIX: `/v${version.split('.')[0]}`,
 	METAVERSE_NFTs_ID: 1,
 	LAND_NFTs_ID: 0,
+	ONBOARDER_PHRASE: 'REPLACE ME WITH AUTO LLD ONBOARDER ACCOUNT PHRASE',
+	CENTRALIZED_API_URL: "http://localhost:8010",
 };
 
 try {

@@ -191,7 +191,7 @@ router.post(
 				if(result.data.claimedOnboardingLld !== false) {
 					return reject('Person already claimed onboarding LLD');
 				}
-				centralizedId = result.data.personId;
+				centralizedId = result.data.id;
 				return resolve(centralizedId)
 			}).catch(e =>{
 				return reject('Technical error when checking if fully approved e-resident who didnt claim LLD yet, please let the devs know');

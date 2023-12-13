@@ -254,12 +254,18 @@ router.post(
 				centralizedAPI.patch('/e-residents/applications/' + centralizedId,  { claimedOnboardingLld: true }).then((result) => {
 					return res.status(200).send('All went well')
 				}).catch(e => {
+					console.log('cought e')
+					console.log(e)
 					return res.status(401).send(e)
 				})
 			}).catch(e => {
+				console.log('cought e')
+				console.log(e)
 				return res.status(401).send(e)
 			})
 		}).catch(e => {
+			console.log('cought e')
+			console.log(e)
 			return res.status(401).send(e)
 		})
 	})

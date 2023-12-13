@@ -218,10 +218,11 @@ router.post(
 
 		let checkIfAlreadyHaveLLDPromise = new Promise((resolve, reject) => {
 			api.derive.balances.all(usingWalletAddress).then(result => {
-				if(new BN(result.availableBalance) !== new BN(0)) {
+				const availableBalance = new BN(result.availableBalance)
+				if(!availableBalance.isZero()) {
 					return reject('User not eligible as account has LLDs already');
 				}
-				return resolve(new BN(result.availableBalance))
+				return resolve(availableBalance)
 			}).catch(e => {
 				console.log(e)
 				return reject('Technical error when checking wallet LLDs, please let the devs know');

@@ -5,6 +5,7 @@ const wrap = require("express-async-handler");
 const { ApiPromise, WsProvider, Keyring } = require("@polkadot/api");
 const config = require("../../config");
 const axios =require ('axios');
+const {BN} = require("@polkadot/util")
 
 const provider = new WsProvider(config.RPC_NODE_URL);
 const apiPromise = ApiPromise.create({
@@ -217,11 +218,12 @@ router.post(
 
 		let checkIfAlreadyHaveLLDPromise = new Promise((resolve, reject) => {
 			api.derive.balances.all(usingWalletAddress).then(result => {
-				if(result.availableBalance.toNumber() !== 0) {
+				if(new BN(result.availableBalance) !== new BN(0)) {
 					return reject('User not eligible as account has LLDs already');
 				}
-				return resolve(result.availableBalance.toNumber())
+				return resolve(new BN(result.availableBalance))
 			}).catch(e => {
+				console.log(e)
 				return reject('Technical error when checking wallet LLDs, please let the devs know');
 			})
 		})

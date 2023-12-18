@@ -1,7 +1,7 @@
 'use strict';
 
 module.exports = {
-	RPC_NODE_URL: 'wss://mainnet.liberland.org:9944',
+	RPC_NODE_URL: 'wss://mainnet.liberland.org',
 	FRONTEND_URL: 'http://localhost',
 	SERVER: {
 		URL: 'https://api.liberverse.net',

@@ -1,19 +1,19 @@
-'use strict';
+"use strict";
 
-const cors = require('cors');
-const debug = require('debug');
-const express = require('express');
-const config = require('../config');
-const apiRouter = require('./routers');
+const cors = require("cors");
+const debug = require("debug");
+const express = require("express");
+const config = require("../config");
+const apiRouter = require("./routers");
 
 const app = express();
 
 // Handle information from reverse proxies correctly
-app.set('trust proxy', 'loopback, linklocal, uniquelocal');
+app.set("trust proxy", "loopback, linklocal, uniquelocal");
 
 app.use(
 	config.API_ROUTE_PREFIX,
-	cors(/*{
+	cors(/* {
 		origin: (origin, callback) => {
 			// Allow any of our domains
 			// Note: Not sending an Error object to the first parameter of the callback
@@ -28,11 +28,11 @@ app.use(
 		allowedHeaders: ['X-Requested-With', 'Content-Type', 'Authorization'],
 		preflightContinue: false,
 		credentials: true,
-	}*/)
+	} */)
 );
 app.use(express.json());
 app.use(config.API_ROUTE_PREFIX, apiRouter);
-app.get('*', (req, res) => res.status(404).json({ error: 'Not Found' }));
+app.get("*", (req, res) => res.status(404).json({ error: "Not Found" }));
 
 app.listen(config.SERVER.PORT, () => {
 	debug(`Listening on ${config.SERVER.URL}`);

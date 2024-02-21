@@ -11,7 +11,7 @@
 		"url": "https://lgl.liberland.org/root/blockchain-api.git"
 	},
 	"config": {
-		"env": "staging",
+		"env": "development",
 		"port": 8060
 	},
 	"main": "src/server.js",
@@ -36,9 +36,12 @@
 		"axios": "^1.6.2",
 		"cors": "^2.8.5",
 		"debug": "^4.3.4",
+		"ejs": "^3.1.9",
 		"express": "^4.18.2",
 		"express-async-handler": "^1.2.0",
-		"http-errors": "^2.0.0"
+		"http-errors": "^2.0.0",
+		"pako": "^2.1.0",
+		"wkhtmltopdf": "^0.4.0"
 	},
 	"devDependencies": {
 		"chalk": "^4.1.0",

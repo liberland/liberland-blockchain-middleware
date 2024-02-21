@@ -1,0 +1,188 @@
+<html>
+<head>
+  <style>
+    body{
+      background: white;
+      margin: 10px;
+    }
+
+    img{
+      height: 100%;
+      width: 100%;
+    }
+  
+    .border{
+      height: 100%;
+      width: 100%;
+      background-image: url('<%= borderBase64 %>');
+      background-size: contain;
+      background-repeat: no-repeat;
+    }
+
+    .content{
+      padding: 45px 60px 50px 85px;
+    }
+
+    .top-data{
+      width: 100%;
+      table-layout: fixed;
+      height: 130px;
+    }
+
+    .top-data_seal-logo,
+    .top-data_logo-liberland{
+      position: relative;
+    }
+
+    .top-data_seal-logo{
+      text-align: right;
+      position: relative;
+    }
+
+    .top-data_seal-logo_image-wrapper{
+      position: absolute;
+      right: 0;
+      top: 0;
+      height: 130px;
+      width: 130px;
+    }
+
+    .top-data_logo-liberland{
+      text-align: left;
+      position: relative;
+    }
+
+    .top-data_logo-liberland_image-wrapper{
+      position: absolute;
+      left: -20px;
+      top: 20px;
+      height: 80px;
+      width: 300px;
+    }
+
+    .text-content{
+      margin-top: 35px;
+    }
+
+    .text-content_title{
+      font-size: 44px;
+      margin-bottom: 2px;
+    }
+
+    .bottom-data_small-text,
+    .text-content_subtitle{
+      font-size: 13px;
+      font-style: italic;
+    }
+    
+    .text-content_paragraph{
+      font-size: 15px;
+      line-height: 1.8;
+    }
+
+    .text-content_paragraph-first{
+      margin: 25px 0;
+    }
+
+    .text-content_fill-data{
+      font-style: italic;
+      font-weight: 700;
+    }
+
+    .bottom-data{
+      margin-top: 80px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .bottom-data_small-text{
+      margin-top: 0;
+      font-size: 12px;
+    }
+
+    .bottom-data_small-text-rigth{
+      position: absolute;
+      bottom: 0;
+    }
+
+    .bottom-data_registrar{
+      position: relative;
+      width: 250px;
+    }
+
+    .bottom-data_seal-logo_image-wrapper{
+      position: absolute;
+      left: 0; 
+      right: 0; 
+      margin-left: auto; 
+      margin-right: auto; 
+      bottom: 65%;
+      height: 80px;
+      width: 80px;
+    }
+
+    .bottom-data_date{
+
+    }
+
+    .bottom-data_date-now{
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="border">
+    <div class="content">
+      <table class="top-data">
+        <tr>
+          <td class="top-data_logo-liberland">
+            <div class="top-data_logo-liberland_image-wrapper">
+              <%- include('./logo.ejs') %> 
+            </div>
+          </td>
+          <td class="top-data_seal-logo">
+            <div class="top-data_seal-logo_image-wrapper">
+              <%- include('./seal.ejs') %> 
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <div class="text-content">
+        <h1 class="text-content_title"><%= textsPdf.title %></h1>
+        <p class="text-content_subtitle"><%= textsPdf.subtitle %></p>
+        <p class="text-content_paragraph text-content_paragraph-first">
+          <%= textsPdf.firstParagraphPart1 %> 
+          <span class="text-content_fill-data"><%= companyName %></span> 
+          <%= textsPdf.firstParagraphPart2 %> 
+        </p>
+        <p class="text-content_paragraph">
+          <%= textsPdf.secondParagraphPart1 %>
+          <span class="text-content_fill-data"><%= purpose %> </span>
+          <%= textsPdf.secondParagraphPart2 %></p>
+      </div>
+
+      <div class="bottom-data">
+        <div class="bottom-data_date">
+          <span class="bottom-data_date-now">
+            <%= date.join('.')%>
+          </span>
+          <p class="bottom-data_small-text"><%= textsPdf.date %></p>
+        </div>
+
+        <div class="bottom-data_registrar">
+          <div class="bottom-data_seal-logo_image-wrapper">
+            <%- include('./seal.ejs') %> 
+          </div>
+          <p class="bottom-data_small-text bottom-data_small-text-rigth"><%= textsPdf.registrar %></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

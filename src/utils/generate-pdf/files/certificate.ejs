@@ -116,9 +116,10 @@
       right: 0; 
       margin-left: auto; 
       margin-right: auto; 
-      bottom: 65%;
-      height: 80px;
-      width: 80px;
+      bottom: 70%;
+      font-size: 14px;
+      font-weight: 700;
+      width: 300px;
     }
 
     .bottom-data_date{
@@ -176,7 +177,7 @@
 
         <div class="bottom-data_registrar">
           <div class="bottom-data_seal-logo_image-wrapper">
-            <%- include('./seal.ejs') %> 
+            Company id <%= companyId %>  as of block <%= blockNumber %>
           </div>
           <p class="bottom-data_small-text bottom-data_small-text-rigth"><%= textsPdf.registrar %></p>
         </div>

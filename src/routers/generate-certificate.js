@@ -17,12 +17,10 @@ async function generateCertificate(req, res, apiPromise) {
 		return;
 	}
 	const registration = maybeRegistration.unwrap();
-	console.log(registration);
 	const registrationData = api.createType(
 		"CompanyData",
 		pako.inflate(registration.data)
 	);
-	console.log(registrationData);
 	const customData = {
 		blockNumber,
 		companyId,

@@ -1,38 +1,45 @@
 "use strict";
 
-const pako = require("pako");
 const generateHTML = require("../utils/generate-pdf/generate-html");
 const generatePDF = require("../utils/generate-pdf/generate-pdf");
 const formatDate = require("../utils/format-date");
 
 async function generateCertificate(req, res, apiPromise) {
-	const { companyId, pathName, blockNumber } = req.body;
-	const api = await apiPromise;
-	const maybeRegistration = await api.query.companyRegistry.registries(
-		0,
-		companyId
-	);
-	if (maybeRegistration.isNone) {
-		res.status(500).send("Company with this id don't exist.");
-		return;
-	}
-	const registration = maybeRegistration.unwrap();
-	const registrationData = api.createType(
-		"CompanyData",
-		pako.inflate(registration.data)
-	);
-	const customData = {
-		blockNumber,
-		companyId,
-		pathName,
-		companyName: registrationData.name.toString(),
-		purpose: registrationData.purpose.toString(),
-		date: formatDate(new Date(Date.now())),
-	};
-	const customPath = pathName + companyId;
+	try{
+		const { companyId, pathName, blockNumber } = req.body;
+		const api = await apiPromise;
+		const maybeRegistration = await api.query.companyRegistry.registries(
+			0,
+			companyId
+		);
+		if (maybeRegistration.isNone) {
+			res.status(500).send("Company with this id don't exist.");
+			return;
+		}
 
-	await generateHTML(customData, "certificate", customPath);
-	await generatePDF(res, customPath);
+		const registration = maybeRegistration.unwrap();
+		const decodedData = Buffer.from(registration.data, 'utf-8').toString();
+		const parsedData = JSON.parse(decodedData);
+		const registrationData = api.createType(
+			"CompanyData",
+			parsedData
+		);
+
+		const customData = {
+			blockNumber,
+			companyId,
+			pathName,
+			companyName: registrationData.name.toString(),
+			purpose: registrationData.purpose.toString(),
+			date: formatDate(new Date(Date.now())),
+		};
+		const customPath = pathName + companyId;
+		await generateHTML(customData, "certificate", customPath);
+		await generatePDF(res, customPath);
+	} catch(err){
+		console.error("Error when generating certificate", err)
+	}
+
 }
 
 module.exports = generateCertificate;

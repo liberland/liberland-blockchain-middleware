@@ -1,16 +1,18 @@
 "use strict";
 
-const cors = require("cors");
-const debug = require("debug");
-const express = require("express");
-const config = require("../config");
-const apiRouter = require("./routers");
+const cors = require('cors');
+const debug = require('debug');
+const prom = require('express-prom-bundle');
+const express = require('express');
+const config = require('../config');
+const apiRouter = require('./routers');
 
 const app = express();
 
 // Handle information from reverse proxies correctly
 app.set("trust proxy", "loopback, linklocal, uniquelocal");
 
+app.use(prom({ includeMethod: true, includePath: true }));
 app.use(
 	config.API_ROUTE_PREFIX,
 	cors(/* {

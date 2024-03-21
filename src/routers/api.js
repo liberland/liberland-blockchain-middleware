@@ -3,10 +3,11 @@
 const router = require("express").Router();
 const wrap = require("express-async-handler");
 const { ApiPromise, WsProvider, Keyring } = require("@polkadot/api");
+const axios = require ('axios');
+const {BN, BN_ONE} = require("@polkadot/util")
 const config = require("../../config");
-const axios =require ('axios');
-const {BN} = require("@polkadot/util")
 const generateCertificate = require('./generate-certificate')
+
 
 const provider = new WsProvider(config.RPC_NODE_URL);
 const apiPromise = ApiPromise.create({
@@ -27,6 +28,23 @@ const apiPromise = ApiPromise.create({
 		},
 	},
 });
+
+router.get(
+	"/healthcheck",
+	wrap(async (req, res) => {
+		const api = await apiPromise;
+		try {
+			const bn = await api.query.system.number();
+			if (bn.lt(BN_ONE)) throw new Error("Invalid block number");
+		} catch(e) {
+			console.error(e);
+			res.status(500).json({status: "ERROR"});
+			return;
+		}
+
+		res.status(200).json({status: "OK"});
+	})
+);
 
 router.get(
 	"/plots/:walletAddress",

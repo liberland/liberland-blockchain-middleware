@@ -5,7 +5,7 @@ const generatePDF = require("../utils/generate-pdf/generate-pdf");
 const formatDate = require("../utils/format-date");
 
 async function generateCertificate(req, res, apiPromise) {
-	try{
+	try {
 		const { companyId, pathName, blockNumber } = req.body;
 		const api = await apiPromise;
 		const maybeRegistration = await api.query.companyRegistry.registries(
@@ -16,14 +16,10 @@ async function generateCertificate(req, res, apiPromise) {
 			res.status(500).send("Company with this id don't exist.");
 			return;
 		}
-
 		const registration = maybeRegistration.unwrap();
-		const decodedData = Buffer.from(registration.data, 'utf-8').toString();
-		const parsedData = JSON.parse(decodedData);
-		const registrationData = api.createType(
-			"CompanyData",
-			parsedData
-		);
+		const decodedData = Buffer.from(registration.data.toString("utf-8"));
+
+		const registrationData = api.createType("CompanyData", decodedData);
 
 		const customData = {
 			blockNumber,
@@ -36,10 +32,9 @@ async function generateCertificate(req, res, apiPromise) {
 		const customPath = pathName + companyId;
 		await generateHTML(customData, "certificate", customPath);
 		await generatePDF(res, customPath);
-	} catch(err){
-		console.error("Error when generating certificate", err)
+	} catch (err) {
+		console.error("Error when generating certificate", err);
 	}
-
 }
 
 module.exports = generateCertificate;

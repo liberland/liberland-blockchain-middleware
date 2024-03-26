@@ -24,7 +24,7 @@ async function generatePDF(res, pathName) {
 		pageSize: "A5",
 		orientation: "landscape",
 	};
-	
+
 	wkhtmltopdf(htmlContent, options, (error) => {
 		if (error) {
 			res.status(500).send("Error generating PDF");

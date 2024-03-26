@@ -1,5 +1,7 @@
 "use strict";
 
+// eslint-disable-next-line import/no-extraneous-dependencies
+const pako = require("pako");
 const generateHTML = require("../utils/generate-pdf/generate-html");
 const generatePDF = require("../utils/generate-pdf/generate-pdf");
 const formatDate = require("../utils/format-date");
@@ -17,16 +19,17 @@ async function generateCertificate(req, res, apiPromise) {
 			return;
 		}
 		const registration = maybeRegistration.unwrap();
-		const decodedData = Buffer.from(registration.data.toString("utf-8"));
-
-		const registrationData = api.createType("CompanyData", decodedData);
-
+		const decompressedData = pako.inflate(registration.data);
+		const registrationData = api.createType(
+			"CompanyData",
+			decompressedData
+		);
 		const customData = {
 			blockNumber,
 			companyId,
 			pathName,
-			companyName: registrationData.name.toString(),
-			purpose: registrationData.purpose.toString(),
+			companyName: registrationData.name,
+			purpose: registrationData.purpose,
 			date: formatDate(new Date(Date.now())),
 		};
 		const customPath = pathName + companyId;

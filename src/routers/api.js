@@ -3,9 +3,11 @@
 const router = require("express").Router();
 const wrap = require("express-async-handler");
 const { ApiPromise, WsProvider, Keyring } = require("@polkadot/api");
-const config = require("../../config");
-const axios =require ('axios');
+const axios = require ('axios');
 const {BN, BN_ONE} = require("@polkadot/util")
+const config = require("../../config");
+const generateCertificate = require('./generate-certificate')
+
 
 const provider = new WsProvider(config.RPC_NODE_URL);
 const apiPromise = ApiPromise.create({
@@ -19,6 +21,10 @@ const apiPromise = ApiPromise.create({
 			demarcation: "BoundedVec<Coords, u32>",
 			type: "Text",
 			status: "Text",
+		},
+		CompanyData: {
+			name: "Text",
+			purpose: "Text",
 		},
 	},
 });
@@ -290,4 +296,12 @@ router.post(
 		})
 	})
 );
+
+router.post(
+	"/certificate",
+	wrap(async (req, res) => {
+		generateCertificate(req, res, apiPromise);
+	})
+);
+
 module.exports = router;

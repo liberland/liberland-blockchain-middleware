@@ -12,6 +12,12 @@ const app = express();
 // Handle information from reverse proxies correctly
 app.set("trust proxy", "loopback, linklocal, uniquelocal");
 
+const originalNormalize = prom.normalizePath;
+prom.normalizePath = (req, opts) => {
+	if (!req.route || !req.route.path || req.route.path === "*")
+		return "crawler-spam";
+	return originalNormalize(req, opts);
+};
 app.use(prom({ includeMethod: true, includePath: true }));
 app.use(
 	config.API_ROUTE_PREFIX,

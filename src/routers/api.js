@@ -304,4 +304,28 @@ router.post(
 	})
 );
 
+router.get(
+	[
+		"/query/:section/:method",
+		"/query/:section/:method/*",
+	],
+	wrap(async (req, res) => {
+		const api = await apiPromise;
+		let args = req.path.split("/").slice(4);
+		let { section, method } = req.params;
+		let query = api.query[section][method];
+		if (typeof query !== "function") {
+			res.status(400).json({ error: `No such query: ${section}.${method}`});
+			return;
+		}
+
+		try {
+			let result = await api.query[req.params.section][req.params.method](...args);
+			res.status(200).json(result.toJSON());
+		} catch(e) {
+			res.status(400).json({ error: e.message })
+		}
+	})
+);
+
 module.exports = router;

@@ -21,7 +21,7 @@ query EraPaidEvents {
 `;
 
 const getApi = () => axios.create({
-  baseURL: config.EXPLORER_GRAPHQL,
+  baseURL: config.EXPLORER_API_URL,
 });
 
 

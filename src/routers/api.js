@@ -6,8 +6,10 @@ const { ApiPromise, WsProvider, Keyring } = require("@polkadot/api");
 const axios = require ('axios');
 const {BN, BN_ONE, BN_ZERO, BN_MILLION} = require("@polkadot/util")
 const config = require("../../config");
-const generateCertificate = require('./generate-certificate');
+const generateCertificate = require('./generate-certificate')
+const { fetchAllCongressSpendings } = require('../utils/spendings');
 const { getLastWeekEraPaidEvents } = require("../utils/explorer");
+const { stringify } = require('csv-stringify/sync');
 
 
 const provider = new WsProvider(config.RPC_NODE_URL);
@@ -363,5 +365,26 @@ router.get(
 		});
 	})
 );
+
+router.get(
+	"/congress_spendings",
+	wrap(async (req, res) => {
+		try {
+			const allSpendings = await fetchAllCongressSpendings();
+			const csv = stringify(
+				[
+					["Timestamp", "Block Number", "Recipient", "Asset", "Value", "Remark"],
+					...allSpendings.map(v => [v.block.timestamp, v.block.number, v.toId, v.asset, v.value, v.remark])
+				]
+			);
+			res
+				.set('Content-Disposition', 'attachment; filename="congress-spendings.csv"')
+				.status(200)
+				.send(csv)
+		} catch(e) {
+			res.status(400).json({ error: e.message })
+		}
+	})
+)
 
 module.exports = router;

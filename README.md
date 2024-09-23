@@ -17,6 +17,16 @@ Install all the necessary packages by running:
 npm i
 ```
 
+#### Generating PDF
+
+To generate PDF files, you'll need to install [Wkhtmltopdf](https://wkhtmltopdf.org/). This tool is essential for converting HTML pages to PDF format.
+
+-   **On Linux:**
+    Run the following command in your terminal:
+    ```bash
+    sudo apt-get -y install wkhtmltopdf
+    ```
+
 ### Running
 
 To run the development server:

@@ -3,9 +3,11 @@
 const router = require("express").Router();
 const wrap = require("express-async-handler");
 const { ApiPromise, WsProvider, Keyring } = require("@polkadot/api");
-const config = require("../../config");
-const axios =require ('axios');
+const axios = require ('axios');
 const {BN, BN_ONE} = require("@polkadot/util")
+const config = require("../../config");
+const generateCertificate = require('./generate-certificate')
+
 
 const provider = new WsProvider(config.RPC_NODE_URL);
 const apiPromise = ApiPromise.create({
@@ -19,6 +21,10 @@ const apiPromise = ApiPromise.create({
 			demarcation: "BoundedVec<Coords, u32>",
 			type: "Text",
 			status: "Text",
+		},
+		CompanyData: {
+			name: "Text",
+			purpose: "Text",
 		},
 	},
 });
@@ -290,4 +296,36 @@ router.post(
 		})
 	})
 );
+
+router.post(
+	"/certificate",
+	wrap(async (req, res) => {
+		generateCertificate(req, res, apiPromise);
+	})
+);
+
+router.get(
+	[
+		"/query/:section/:method",
+		"/query/:section/:method/*",
+	],
+	wrap(async (req, res) => {
+		const api = await apiPromise;
+		let args = req.path.split("/").slice(4);
+		let { section, method } = req.params;
+		let query = api.query[section][method];
+		if (typeof query !== "function") {
+			res.status(400).json({ error: `No such query: ${section}.${method}`});
+			return;
+		}
+
+		try {
+			let result = await api.query[req.params.section][req.params.method](...args);
+			res.status(200).json(result.toJSON());
+		} catch(e) {
+			res.status(400).json({ error: e.message })
+		}
+	})
+);
+
 module.exports = router;

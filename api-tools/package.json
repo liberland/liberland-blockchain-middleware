@@ -1,0 +1,18 @@
+{
+	"name": "test-api",
+	"scripts": {
+		"build": "tsc",
+		"start": "ts-node"
+	},
+	"dependencies": {
+		"@polkadot/api": "^10.11.2",
+		"axios": "^1.7.2",
+		"csv-stringify": "^6.5.1"
+	},
+	"license": "UNLICENSED",
+	"devDependencies": {
+		"@types/node": "^20.11.16",
+		"prettify": "^0.1.7",
+		"typescript": "^5.3.3"
+	}
+}

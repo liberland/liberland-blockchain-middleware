@@ -4,12 +4,13 @@ const router = require("express").Router();
 const wrap = require("express-async-handler");
 const { ApiPromise, WsProvider, Keyring } = require("@polkadot/api");
 const axios = require ('axios');
-const {BN, BN_ONE, BN_ZERO, BN_MILLION} = require("@polkadot/util")
+const {BN, BN_ONE, BN_ZERO, BN_MILLION, hexToU8a} = require("@polkadot/util")
 const config = require("../../config");
 const generateCertificate = require('./generate-certificate')
 const { fetchAllCongressSpendings } = require('../utils/spendings');
 const { getLastWeekEraPaidEvents } = require("../utils/explorer");
 const { stringify } = require('csv-stringify/sync');
+const pako = require('pako');
 
 
 const provider = new WsProvider(config.RPC_NODE_URL);
@@ -28,6 +29,16 @@ const apiPromise = ApiPromise.create({
 		CompanyData: {
 			name: "Text",
 			purpose: "Text",
+		},
+		RemarkInfo: {
+			category: 'Text',
+			project: 'Text',
+			supplier: 'Text',
+			description: 'Text',
+			finalDestination: 'Text',
+			amountInUSDAtDateOfPayment: 'u64',
+			date: 'u64',
+			currency: 'Text',
 		},
 	},
 });
@@ -367,24 +378,78 @@ router.get(
 );
 
 router.get(
-	"/congress_spendings",
+	"/congress-spendings",
 	wrap(async (req, res) => {
 		try {
 			const allSpendings = await fetchAllCongressSpendings();
-			const csv = stringify(
+			const api = await apiPromise;
+			const csv = stringify([
 				[
-					["Timestamp", "Block Number", "Recipient", "Asset", "Value", "Remark"],
-					...allSpendings.map(v => [v.block.timestamp, v.block.number, v.toId, v.asset, v.value, v.remark])
-				]
-			);
-			res
-				.set('Content-Disposition', 'attachment; filename="congress-spendings.csv"')
+					"Timestamp",
+					"Block Number",
+					"Recipient",
+					"Asset",
+					"Value",
+					"Category",
+					"Project",
+					"Supplier",
+					"Description",
+					"Final Destination",
+					"Amount In USD At Date Of Payment",
+					"Date",
+					"Currency",
+					"Text Remark",
+					"Raw Remark",
+				],
+				...allSpendings.map((v) => {
+					let parsedRemark;
+					let textRemark;
+					try {
+						if (v.remark) {
+							const compressedData = hexToU8a(v.remark);
+							const decompressed = pako.inflate(compressedData);
+							parsedRemark = api
+								.createType("RemarkInfo", decompressed)
+								.toJSON();
+							parsedRemark.date = new Date(
+								parsedRemark.date
+							).toISOString();
+						}
+					} catch (e) {
+						textRemark = Buffer.from(
+							v.remark.substring(2),
+							"hex"
+						).toString("utf-8");
+					}
+					return [
+						v.block.timestamp,
+						v.block.number,
+						v.toId,
+						v.asset,
+						v.value,
+						parsedRemark?.category ?? "-",
+						parsedRemark?.project ?? "-",
+						parsedRemark?.supplier ?? "-",
+						parsedRemark?.description ?? "-",
+						parsedRemark?.finalDestination ?? "-",
+						parsedRemark?.amountInUSDAtDateOfPayment ?? "-",
+						parsedRemark?.date ?? "-",
+						parsedRemark?.currency ?? "-",
+						textRemark ?? "-",
+						v.remark,
+					];
+				}),
+			]);
+			res.set(
+				"Content-Disposition",
+				'attachment; filename="congress-spendings.csv"'
+			)
 				.status(200)
-				.send(csv)
-		} catch(e) {
-			res.status(400).json({ error: e.message })
+				.send(csv);
+		} catch (e) {
+			res.status(400).json({ error: e.message });
 		}
 	})
-)
+);
 
 module.exports = router;

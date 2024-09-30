@@ -4,9 +4,10 @@ const router = require("express").Router();
 const wrap = require("express-async-handler");
 const { ApiPromise, WsProvider, Keyring } = require("@polkadot/api");
 const axios = require ('axios');
-const {BN, BN_ONE} = require("@polkadot/util")
+const {BN, BN_ONE, BN_ZERO, BN_MILLION} = require("@polkadot/util")
 const config = require("../../config");
-const generateCertificate = require('./generate-certificate')
+const generateCertificate = require('./generate-certificate');
+const { getLastWeekEraPaidEvents } = require("../utils/explorer");
 
 
 const provider = new WsProvider(config.RPC_NODE_URL);
@@ -325,6 +326,41 @@ router.get(
 		} catch(e) {
 			res.status(400).json({ error: e.message })
 		}
+	})
+);
+
+router.get(
+	"/lld-stats",
+	wrap(async (req, res) => {
+		const api = await apiPromise;
+		const currentEraOption = await api.query.staking.currentEra();
+		const previousEra = currentEraOption.unwrap().toNumber() - 1;
+		const events = await getLastWeekEraPaidEvents();
+		const lastEraTotalStaked = await api.query.staking.erasTotalStake(previousEra);
+		const totalLld = await api.query.balances.totalIssuance();
+		const lastEraRewards = events.find(v => v[0] === previousEra.toString());
+		const lastEraStakersRewards = new BN(lastEraRewards[1]);
+		const lastEraCongressRewards = new BN(lastEraRewards[2]);
+
+		const DENOMINATOR = BN_MILLION;
+		const inflationPerEra = lastEraCongressRewards.add(lastEraStakersRewards).mul(DENOMINATOR).div(totalLld).toNumber() / DENOMINATOR.toNumber();
+		const inflation = Math.pow(1 + inflationPerEra, 4*365) - 1;
+
+		const interestRatePerEra = lastEraStakersRewards.mul(DENOMINATOR).div(lastEraTotalStaked).toNumber() / DENOMINATOR.toNumber();
+		const stakerApyWeeklyPayouts = Math.pow(1 + 4*7*interestRatePerEra, 52) - 1
+
+
+		const lastWeekStakersRewards = events.reduce((lastWeek, i) => lastWeek.add(new BN(i[1])), BN_ZERO).toString();
+		const lastWeekCongressRewards = events.reduce((lastWeek, i) => lastWeek.add(new BN(i[2])), BN_ZERO).toString();
+
+
+		res.status(200).json({
+			inflation,
+			lastWeekCongressRewards,
+			lastWeekStakersRewards,
+			interestRatePerEra,
+			stakerApyWeeklyPayouts,
+		});
 	})
 );
 

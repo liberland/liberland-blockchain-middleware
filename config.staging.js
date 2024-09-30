@@ -8,5 +8,6 @@ module.exports = {
 	},
 	IS_LIVE: true,
 	CENTRALIZED_API_URL: "https://staging.api.liberland.org",
+	EXPLORER_GRAPHQL: "https://archive.testchain.liberland.org/graphql",
 	ONBOARDER_PHRASE: "REPLACE ME WITH AUTO LLD ONBOARDER ACCOUNT PHRASE",
 };

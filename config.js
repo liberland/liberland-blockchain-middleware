@@ -14,6 +14,7 @@ const config = {
 	LAND_NFTs_ID: 0,
 	ONBOARDER_PHRASE: 'REPLACE ME WITH AUTO LLD ONBOARDER ACCOUNT PHRASE',
 	CENTRALIZED_API_URL: "http://localhost:8010",
+	EXPLORER_API_URL: "http://localhost:3000",
 };
 
 try {

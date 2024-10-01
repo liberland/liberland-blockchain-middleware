@@ -364,4 +364,17 @@ router.get(
 	})
 );
 
+router.get(
+	"/total-issuance/lld",
+	wrap(async (req, res) => {
+		try {
+			const api = await apiPromise;
+			let issuance = await api.query.balances.totalIssuance();
+			res.status(200).json(issuance.toString());
+		} catch(e) {
+			res.status(400).json({ error: e.message })
+		}
+	})
+);
+
 module.exports = router;

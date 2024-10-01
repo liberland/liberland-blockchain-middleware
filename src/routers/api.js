@@ -7,8 +7,7 @@ const axios = require ('axios');
 const {BN, BN_ONE, BN_ZERO, BN_MILLION, hexToU8a} = require("@polkadot/util")
 const config = require("../../config");
 const generateCertificate = require('./generate-certificate')
-const { fetchAllCongressSpendings } = require('../utils/spendings');
-const { getLastWeekEraPaidEvents } = require("../utils/explorer");
+const { getLastWeekEraPaidEvents, fetchAllCongressSpendings } = require("../utils/explorer");
 const { stringify } = require('csv-stringify/sync');
 const pako = require('pako');
 

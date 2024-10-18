@@ -370,7 +370,9 @@ router.get(
 		try {
 			const api = await apiPromise;
 			let issuance = await api.query.balances.totalIssuance();
-			res.status(200).json(issuance.toString());
+			let fullLLDIssuance = issuance.toString();
+			fullLLDIssuance = fullLLDIssuance.substring(0, fullLLDIssuance.length - 12);
+			res.status(200).json(fullLLDIssuance);
 		} catch(e) {
 			res.status(400).json({ error: e.message })
 		}

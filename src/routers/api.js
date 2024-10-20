@@ -333,9 +333,18 @@ router.get(
 	"/lld-stats",
 	wrap(async (req, res) => {
 		const api = await apiPromise;
-		const currentEraOption = await api.query.staking.currentEra();
-		const previousEra = currentEraOption.unwrap().toNumber() - 1;
+		const currentEraOption = (await api.query.staking.currentEra()).unwrap().toNumber();
 		const events = await getLastWeekEraPaidEvents();
+		const previousEra = events
+			.map(([era]) => parseInt(era))
+			.filter(era => era < currentEraOption)
+			.sort(
+				(a, b) => b - a
+			)[0];
+		if (!previousEra) {
+			res.status(404).json({ error: "No previous era found" });
+			return;
+		}
 		const lastEraTotalStaked = await api.query.staking.erasTotalStake(previousEra);
 		const totalLld = await api.query.balances.totalIssuance();
 		const lastEraRewards = events.find(v => v[0] === previousEra.toString());

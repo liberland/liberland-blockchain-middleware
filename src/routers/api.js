@@ -388,4 +388,51 @@ router.get(
 	})
 );
 
+router.get(
+	"/election-data",
+	wrap(async (req, res) => {
+		const api = await apiPromise;
+		const congressMembersRaw = await api.query.council.members();
+		const congressMembers = congressMembersRaw.toHuman();
+
+		const electionsCandidatesRaw = await api.query.elections.candidates();
+		let electionsCandidates = electionsCandidatesRaw.toHuman();
+		electionsCandidates = electionsCandidates.map(ec => ec[0]);
+
+		const runnerupsRaw =  await api.query.elections.runnersUp();
+		let runnerups = runnerupsRaw.toHuman();
+		runnerups = runnerups.map(ru => ru['who']);
+
+		const electionsInfo = await api.derive.elections.info();
+		let termDuration = electionsInfo.termDuration.toNumber();
+
+		const lastHeader = await api.rpc.chain.getHeader();
+		const lastBlockNumber = lastHeader.number.toNumber();
+
+		const signedBlock = await api.rpc.chain.getBlock();
+		let lastBlockTimestamp = 0;
+		// the information for each of the contained extrinsics
+		signedBlock.block.extrinsics.forEach(({ method: { args, method, section }}) => {
+			// check for timestamp.set
+			if (section === 'timestamp' && method === 'set') {
+				// extract the Option<Moment> as Moment
+				lastBlockTimestamp = args[0].unwrap().toNumber();
+			}
+		});
+
+		const remaining = termDuration - (lastBlockNumber % termDuration);
+		const blockDurationMilis = 6000;
+		const nextElectionEnd = lastBlockTimestamp + (remaining * blockDurationMilis);
+		const currentTermProgressPercent = Math.round(100 * (1 - (remaining / termDuration)));
+
+		res.status(200).json({
+			congressMembers,
+			runnerups,
+			electionsCandidates,
+			currentTermProgressPercent,
+			nextElectionEnd
+		});
+	})
+);
+
 module.exports = router;

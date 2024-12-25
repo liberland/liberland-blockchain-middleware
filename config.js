@@ -7,7 +7,7 @@ const config = {
 	ENVIRONMENT: process.env.npm_package_config_env || 'development',
 	IS_LIVE: false,
 	SERVER: {
-		PORT: process.env.npm_package_config_port || 8060,
+		PORT: process.env.npm_package_config_port || 8090,
 	},
 	API_ROUTE_PREFIX: `/v${version.split('.')[0]}`,
 	METAVERSE_NFTs_ID: 1,

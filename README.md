@@ -35,7 +35,7 @@ To run the development server:
 npm start
 ```
 
-Once loaded, the website should be available on port `8060` of your local machine. For example, http://localhost:8060.
+Once loaded, the website should be available on port `8090` of your local machine. For example, http://localhost:8090.
 The blockchain, centralized API (deployed on your local machine or connected to testnet) should be setup as well.
 
 ##Deployment

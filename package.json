@@ -11,8 +11,8 @@
 		"url": "https://lgl.liberland.org/root/blockchain-api.git"
 	},
 	"config": {
-		"env": "staging",
-		"port": 8060
+		"env": "development",
+		"port": 8090
 	},
 	"main": "src/server.js",
 	"scripts": {

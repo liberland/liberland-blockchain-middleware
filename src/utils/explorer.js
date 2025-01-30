@@ -3,7 +3,7 @@
 const axios = require("axios");
 const config = require("../../config");
 
-const CONGRESS_ADDRESS = "5EYCAe5g8CDuMsTief7QBxfvzDFEfws6ueXTUhsbx5V81nGH";
+
 
 const eraPaidEventsQuery = `
 query EraPaidEvents {
@@ -57,11 +57,11 @@ async function queryAllPages(query, variables, key) {
 	return allData;
 }
 
-async function getLLMSpendings() {
+async function getLLMSpendings(userId, numResults) {
 	const data = await queryAllPages(
 		`
-		query LLM($after: Cursor, $userId: String) {
-			merits(first: 50, after: $after, filter: { fromId: { equalTo: $userId } }) {
+		query LLM($after: Cursor, $userId: String, $numResults: Int) {
+			merits(first: $numResults, after: $after, filter: { fromId: { equalTo: $userId } }) {
 				nodes {
 					id
 					toId
@@ -79,17 +79,17 @@ async function getLLMSpendings() {
 			}
 		}
 		`,
-		{ userId: CONGRESS_ADDRESS },
+		{ userId, numResults },
 		"merits"
 	);
 	return data.flat().map((v) => ({ asset: "LLM", ...v }));
 }
 
-async function getAssetsSpendings() {
+async function getAssetsSpendings(userId, numResults) {
 	const data = await queryAllPages(
 		`
-		query Assets($after: Cursor, $userId: String) {
-			assetTransfers(first: 50, after: $after, filter: { asset: { notEqualTo: "1" }, fromId: { equalTo: $userId } }) {
+		query Assets($after: Cursor, $userId: String, $numResults: Int) {
+			assetTransfers(first: $numResults, after: $after, filter: { asset: { notEqualTo: "1" }, fromId: { equalTo: $userId } }) {
 				nodes {
 					id
 					asset
@@ -108,17 +108,17 @@ async function getAssetsSpendings() {
 			}
 		}
 		`,
-		{ userId: CONGRESS_ADDRESS },
+		{ userId, numResults },
 		"assetTransfers"
 	);
 	return data.flat();
 }
 
-async function getLLDSpendings() {
+async function getLLDSpendings(userId, numResults) {
 	const data = await queryAllPages(
 		`
-		query LLD($after: Cursor, $userId: String) {
-			transfers(first: 50, after: $after, filter: { fromId: { equalTo: $userId } }) {
+		query LLD($after: Cursor, $userId: String, $numResults: Int) {
+			transfers(first: $numResults, after: $after, filter: { fromId: { equalTo: $userId } }) {
 				nodes {
 					id
 					toId
@@ -136,17 +136,17 @@ async function getLLDSpendings() {
 			}
 		}
 		`,
-		{ userId: CONGRESS_ADDRESS },
+		{ userId, numResults },
 		"transfers"
 	);
 	return data.flat().map((v) => ({ asset: "LLD", ...v }));
 }
 
-async function fetchAllCongressSpendings() {
+async function fetchAllSpendings(userId, numResults) {
 	const allSpendings = [
-		await getLLDSpendings(),
-		await getLLMSpendings(),
-		await getAssetsSpendings(),
+		await getLLDSpendings(userId, numResults),
+		await getLLMSpendings(userId, numResults),
+		await getAssetsSpendings(userId, numResults),
 	]
 		.flat()
 		.sort((a, b) =>
@@ -157,6 +157,6 @@ async function fetchAllCongressSpendings() {
 }
 
 module.exports = {
-	fetchAllCongressSpendings,
+	fetchAllSpendings,
 	getLastWeekEraPaidEvents,
 }

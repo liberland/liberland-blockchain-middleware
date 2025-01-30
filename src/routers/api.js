@@ -7,9 +7,10 @@ const axios = require ('axios');
 const {BN, BN_ONE, BN_ZERO, BN_MILLION, hexToU8a} = require("@polkadot/util")
 const config = require("../../config");
 const generateCertificate = require('./generate-certificate')
-const { getLastWeekEraPaidEvents, fetchAllCongressSpendings } = require("../utils/explorer");
+const { getLastWeekEraPaidEvents, fetchAllSpendings } = require("../utils/explorer");
 const { stringify } = require('csv-stringify/sync');
 const pako = require('pako');
+const {formatSpendings} = require("../utils/government-spendings");
 
 
 const provider = new WsProvider(config.RPC_NODE_URL);
@@ -377,68 +378,34 @@ router.get(
 );
 
 router.get(
-	"/congress-spendings",
+	"/government-spendings/:walletAddress",
 	wrap(async (req, res) => {
 		try {
-			const allSpendings = await fetchAllCongressSpendings();
+			const { walletAddress } = req.params;
+			const allSpendings = await fetchAllSpendings(walletAddress, 500);
 			const api = await apiPromise;
-			const csv = stringify([
-				[
-					"Timestamp",
-					"Block Number",
-					"Recipient",
-					"Asset",
-					"Value",
-					"Category",
-					"Project",
-					"Supplier",
-					"Description",
-					"Final Destination",
-					"Amount In USD At Date Of Payment",
-					"Date",
-					"Currency",
-					"Text Remark",
-					"Raw Remark",
-				],
-				...allSpendings.map((v) => {
-					let parsedRemark;
-					let textRemark;
-					try {
-						if (v.remark) {
-							const compressedData = hexToU8a(v.remark);
-							const decompressed = pako.inflate(compressedData);
-							parsedRemark = api
-								.createType("RemarkInfo", decompressed)
-								.toJSON();
-							parsedRemark.date = new Date(
-								parsedRemark.date
-							).toISOString();
-						}
-					} catch (e) {
-						textRemark = Buffer.from(
-							v.remark.substring(2),
-							"hex"
-						).toString("utf-8");
-					}
-					return [
-						v.block.timestamp,
-						v.block.number,
-						v.toId,
-						v.asset,
-						v.value,
-						parsedRemark?.category ?? "-",
-						parsedRemark?.project ?? "-",
-						parsedRemark?.supplier ?? "-",
-						parsedRemark?.description ?? "-",
-						parsedRemark?.finalDestination ?? "-",
-						parsedRemark?.amountInUSDAtDateOfPayment ?? "-",
-						parsedRemark?.date ?? "-",
-						parsedRemark?.currency ?? "-",
-						textRemark ?? "-",
-						v.remark,
-					];
-				}),
-			]);
+
+			const spendingsDataWithRemark = formatSpendings(api, allSpendings)
+
+			res.status(200).json(JSON.stringify(spendingsDataWithRemark))
+		} catch (e) {
+			res.status(400).json({ error: e.message });
+		}
+	})
+);
+
+router.get(
+	"/government-spendings-csv/:walletAddress",
+	wrap(async (req, res) => {
+		try {
+			const { walletAddress } = req.params;
+			const allSpendings = await fetchAllSpendings(walletAddress, 500);
+			const api = await apiPromise;
+
+			const spendingsDataWithRemark = formatSpendings(api, allSpendings)
+
+			const csv = stringify(spendingsDataWithRemark);
+
 			res.set(
 				"Content-Disposition",
 				'attachment; filename="congress-spendings.csv"'

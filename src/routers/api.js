@@ -347,6 +347,8 @@ router.get(
 		}
 		const lastEraTotalStaked = await api.query.staking.erasTotalStake(previousEra);
 		const totalLld = await api.query.balances.totalIssuance();
+		const fullLLDIssuance = totalLld.toString();
+		const totalLldValue = fullLLDIssuance.substring(0, fullLLDIssuance.length - 12);
 		const lastEraRewards = events.find(v => v[0] === previousEra.toString());
 		const lastEraStakersRewards = new BN(lastEraRewards[1]);
 		const lastEraCongressRewards = new BN(lastEraRewards[2]);
@@ -364,6 +366,7 @@ router.get(
 
 
 		res.status(200).json({
+			totalLld: totalLldValue,
 			inflation,
 			lastWeekCongressRewards,
 			lastWeekStakersRewards,

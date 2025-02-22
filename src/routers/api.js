@@ -455,7 +455,11 @@ router.get(
 		try {
 			const { walletAddress } = req.params;
 			const { skip, take } = req.query;
-			const allSpendings = await fetchAllSpendings(walletAddress, skip || 0, take || 50);
+			const allSpendings = await fetchAllSpendings(
+				walletAddress,
+				parseInt(skip, 10) || 0,
+				parseInt(take, 10) || 50
+			);
 			const api = await apiPromise;
 
 			const spendingsDataWithRemark = formatSpendings(api, allSpendings)

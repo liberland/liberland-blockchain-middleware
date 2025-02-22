@@ -35,33 +35,70 @@ const getLastWeekEraPaidEvents = async () => {
 };
 
 
-async function queryAllPages(query, variables, key) {
-	let allData = [];
-	let after = undefined;
-	while (true) {
-		const result = await fetch(config.EXPLORER_API_URL, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({ query, variables: { after, ...variables } }),
-		});
-		const data = await result.json();
-		allData.push(data.data[key].nodes);
-		if (data.data[key].pageInfo.hasNextPage) {
-			after = data.data[key].pageInfo.endCursor;
-		} else {
-			break;
-		}
-	}
-	return allData;
+async function queryAllPages(query, variables, ...keys) {
+	const { data } = await getApi().post('', {
+		query, variables
+	});
+	return keys.flatMap(key => {
+		const additionalInfo = (() => {
+			switch (key) {
+				case "merits":
+					return { asset: "LLM" };
+				case "transfers":
+					return { asset: "LLD" };
+				default:
+					return {};
+			}
+		})();
+		return data.data[key].nodes.map((d) => ({ ...d, ...additionalInfo }));
+	}); 
 }
 
-async function getLLMSpendings(userId, numResults) {
-	const data = await queryAllPages(
+async function queryPagesCount(query, variables, ...keys) {
+	const { data } = await getApi().post('', {
+		query, variables
+	});
+	return keys.reduce((acc, key) => acc + data.data[key].totalCount + acc, 0)
+}
+
+
+async function getSpendingCount(userId) {
+	return queryPagesCount(
 		`
-		query LLM($after: Cursor, $userId: String, $numResults: Int) {
-			merits(first: $numResults, after: $after, filter: { fromId: { equalTo: $userId } }) {
+		query Spending($userId: String, $skip: Int, $take: Int) {
+			merits(first: $take, offset: $skip, filter: { fromId: { equalTo: $userId } }) {
+				totalCount
+			}
+			transfers(first: $take, offset: $skip, filter: { fromId: { equalTo: $userId } }) {
+				totalCount
+			}
+			assetTransfers(first: $take, offset: $skip, filter: { asset: { notEqualTo: "1" }, fromId: { equalTo: $userId } }) {
+				totalCount
+			}
+		}
+		`,
+		{ userId },
+		"merits",
+		"transfers",
+		"assetTransfers",
+	);
+}
+
+async function getSpending(userId, skip, take) {
+	const methodParams = [
+		skip !== undefined && "$skip: Int",
+		take !== undefined && "$take: Int",
+		"$userId: String",
+	].filter(Boolean).join(", ");
+	const queryParams = (filter) => [
+		take !== undefined && "first: $take",
+		skip !== undefined && "offset: $skip",
+		filter,
+	].filter(Boolean).join(", ");
+	return queryAllPages(
+		`
+		query Spending(${methodParams}) {
+			merits(${queryParams("filter: { fromId: { equalTo: $userId } }")}) {
 				nodes {
 					id
 					toId
@@ -72,24 +109,20 @@ async function getLLMSpendings(userId, numResults) {
 						timestamp
 					}
 				}
-				pageInfo {
-					hasNextPage,
-					endCursor
+			}
+			transfers(${queryParams("filter: { fromId: { equalTo: $userId } }")}) {
+				nodes {
+					id
+					toId
+					value
+					remark
+					block {
+						number
+						timestamp
+					}
 				}
 			}
-		}
-		`,
-		{ userId, numResults },
-		"merits"
-	);
-	return data.flat().map((v) => ({ asset: "LLM", ...v }));
-}
-
-async function getAssetsSpendings(userId, numResults) {
-	const data = await queryAllPages(
-		`
-		query Assets($after: Cursor, $userId: String, $numResults: Int) {
-			assetTransfers(first: $numResults, after: $after, filter: { asset: { notEqualTo: "1" }, fromId: { equalTo: $userId } }) {
+			assetTransfers(${queryParams(`filter: { asset: { notEqualTo: "1" }, fromId: { equalTo: $userId } }`)}) {
 				nodes {
 					id
 					asset
@@ -101,56 +134,20 @@ async function getAssetsSpendings(userId, numResults) {
 						timestamp
 					}
 				}
-				pageInfo {
-					hasNextPage,
-					endCursor
-				}
 			}
 		}
 		`,
-		{ userId, numResults },
-		"assetTransfers"
+		{ userId, skip, take },
+		"merits",
+		"transfers",
+		"assetTransfers",
 	);
-	return data.flat();
 }
 
-async function getLLDSpendings(userId, numResults) {
-	const data = await queryAllPages(
-		`
-		query LLD($after: Cursor, $userId: String, $numResults: Int) {
-			transfers(first: $numResults, after: $after, filter: { fromId: { equalTo: $userId } }) {
-				nodes {
-					id
-					toId
-					value
-					remark
-					block {
-						number
-						timestamp
-					}
-				}
-				pageInfo {
-					hasNextPage,
-					endCursor
-				}
-			}
-		}
-		`,
-		{ userId, numResults },
-		"transfers"
-	);
-	return data.flat().map((v) => ({ asset: "LLD", ...v }));
-}
-
-async function fetchAllSpendings(userId, numResults) {
-	const allSpendings = [
-		await getLLDSpendings(userId, numResults),
-		await getLLMSpendings(userId, numResults),
-		await getAssetsSpendings(userId, numResults),
-	]
-		.flat()
+async function fetchAllSpendings(userId, skip, take) {
+	const allSpendings = (await getSpending(userId, skip, take))
 		.sort((a, b) =>
-			parseInt(a.block.number) > parseInt(b.block.number) ? -1 : 1
+			parseInt(a.block.number, 10) > parseInt(b.block.number, 10) ? -1 : 1
 		);
 
 	return allSpendings;
@@ -159,4 +156,5 @@ async function fetchAllSpendings(userId, numResults) {
 module.exports = {
 	fetchAllSpendings,
 	getLastWeekEraPaidEvents,
+	getSpendingCount,
 }

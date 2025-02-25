@@ -9,7 +9,8 @@ const textsPdf = {
 		"Issued in accordance with the Company Law of the Free Republic of Liberland, henceforth 'Liberland'",
 	firstParagraphPart1: "Let it be known to all concerned parties that",
 	firstParagraphPart2:
-		"has COMPLIED with all the relevant provisions of the Law of Liberland relating to the incorporation of companies.",
+		"has COMPLIED with all the relevant provisions of the Law of Liberland relating to the incorporation of companies as a",
+	firstParagraphPart3: "company",
 	secondParagraphPart1:
 		"Now, therefore, the Registrar of Companies of Liberland does hereby grant and issue to said",
 	secondParagraphPart2:

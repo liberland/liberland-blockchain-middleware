@@ -14,6 +14,7 @@ async function generateCertificate(req, res, apiPromise) {
 			0,
 			companyId
 		);
+		console.log(maybeRegistration.isNone)
 		if (maybeRegistration.isNone) {
 			res.status(500).send("Company with this id don't exist.");
 			return;
@@ -24,12 +25,13 @@ async function generateCertificate(req, res, apiPromise) {
 			"CompanyData",
 			decompressedData
 		);
+
 		const customData = {
 			blockNumber,
 			companyId,
 			pathName,
 			companyName: registrationData.name,
-			purpose: registrationData.purpose,
+			companyType: registrationData.companyType,
 			date: formatDate(new Date(Date.now())),
 		};
 		const customPath = pathName + companyId;

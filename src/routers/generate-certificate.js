@@ -14,7 +14,7 @@ async function generateCertificate(req, res, apiPromise) {
 			0,
 			companyId
 		);
-		console.log(maybeRegistration.isNone)
+
 		if (maybeRegistration.isNone) {
 			res.status(500).send("Company with this id don't exist.");
 			return;

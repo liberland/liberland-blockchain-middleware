@@ -7,7 +7,7 @@ const axios = require ('axios');
 const {BN, BN_ONE, BN_ZERO, BN_MILLION, hexToU8a} = require("@polkadot/util")
 const config = require("../../config");
 const generateCertificate = require('./generate-certificate')
-const { getLastWeekEraPaidEvents, fetchAllSpendings, getSpendingCount } = require("../utils/explorer");
+const { getLastWeekEraPaidEvents, getTaxList, fetchAllSpendings, getSpendingCount } = require("../utils/explorer");
 const { stringify } = require('csv-stringify/sync');
 const pako = require('pako');
 const {formatSpendings} = require("../utils/government-spendings");
@@ -395,6 +395,83 @@ router.post(
 	wrap(async (req, res) => {
 		generateCertificate(req, res, apiPromise);
 	})
+);
+
+router.get(
+  '/tax-payers',
+  wrap(async (req, res) => {
+    try {
+      const api = await apiPromise;
+      const lastHeader = await api.rpc.chain.getHeader();
+      const lastBlock = lastHeader.number.toNumber();
+
+      const limit = parseInt(req.query.limit, 10) || 10;
+      const months = parseInt(req.query.months, 10) || 12;
+      const blocksInDay = (3600 * 24) / 6;
+      const blocksInMonth = blocksInDay * 30.44;
+      const startBlock = Math.floor(lastBlock - (months * blocksInMonth));
+
+      const tax = await getTaxList();
+
+			const { filteredList, unfilteredList } = tax.taxPools.nodes.reduce(
+				(acc, { addressId, value, blockNumber }) => {
+					const numericValue = Number(value);
+
+					if (!acc.unfilteredList[addressId]) {
+						acc.unfilteredList[addressId] = 0;
+					}
+					acc.unfilteredList[addressId] += numericValue;
+
+					if (blockNumber >= startBlock) {
+						if (!acc.filteredList[addressId]) {
+							acc.filteredList[addressId] = 0;
+						}
+						acc.filteredList[addressId] += numericValue;
+					}
+
+					return acc;
+				},
+				{ filteredList: {}, unfilteredList: {} }
+			);
+
+      const totalsByAddressUnpool = tax.taxUnPools.nodes.reduce((acc, { addressId, value, blockNumber }) => {
+        const numericValue = Number(value);
+
+        if (blockNumber >= startBlock) {
+          if (!acc[addressId]) {
+            acc[addressId] = 0;
+          }
+          acc[addressId] += numericValue;
+        }
+
+        return acc;
+      }, {});
+
+      const sortedPollTotals = Object.entries(filteredList)
+        .map(([addressId, totalValue]) => ({ addressId, totalValue }))
+        .sort((a, b) => b.totalValue - a.totalValue)
+        .slice(0, limit);
+
+			const sortedTotalsByAddressPollTotal = Object.entries(unfilteredList)
+			.map(([addressId, totalValue]) => ({ addressId, totalValue }))
+			.sort((a, b) => b.totalValue - a.totalValue)
+			.slice(0, limit);
+
+
+      const sortedUnpoolTotals = Object.entries(totalsByAddressUnpool)
+        .map(([addressId, totalValue]) => ({ addressId, totalValue }))
+        .sort((a, b) => b.totalValue - a.totalValue)
+        .slice(0, limit);
+
+      res.status(200).json({
+        sortedPollTotals,
+        sortedUnpoolTotals,
+				sortedTotalsByAddressPollTotal
+      });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  })
 );
 
 router.get(

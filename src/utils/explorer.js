@@ -20,6 +20,25 @@ query EraPaidEvents {
 }
 `;
 
+const taxQuery = `
+  query taxQuery {
+    taxUnPools{
+      nodes{
+        value
+        addressId
+        blockNumber
+      }
+    }
+    taxPools{
+      nodes{
+        value
+        addressId
+        blockNumber
+      }
+    }
+  }
+`;
+
 const getApi = () => axios.create({
   baseURL: config.EXPLORER_GRAPHQL,
 });
@@ -32,6 +51,16 @@ const getLastWeekEraPaidEvents = async () => {
   return data.data.events.nodes.map(v => v.data);
 };
 
+const getTaxList = async () => {
+
+  const { data } = await getApi().post('', {
+    query: taxQuery
+  });
+
+  return data.data;
+};
+
 module.exports = {
   getLastWeekEraPaidEvents,
+  getTaxList
 }

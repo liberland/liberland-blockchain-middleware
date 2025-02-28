@@ -403,6 +403,7 @@ router.get(
     try {
       const api = await apiPromise;
       const lastHeader = await api.rpc.chain.getHeader();
+			const politics = await api.query.llm.llmPolitics.entries();
       const lastBlock = lastHeader.number.toNumber();
 
       const limit = parseInt(req.query.limit, 10) || 10;
@@ -413,25 +414,20 @@ router.get(
 
       const tax = await getTaxList();
 
-			const { filteredList, unfilteredList } = tax.taxPools.nodes.reduce(
+			const filteredData = tax.taxPools.nodes.reduce(
 				(acc, { addressId, value, blockNumber }) => {
 					const numericValue = Number(value);
 
-					if (!acc.unfilteredList[addressId]) {
-						acc.unfilteredList[addressId] = 0;
-					}
-					acc.unfilteredList[addressId] += numericValue;
-
 					if (blockNumber >= startBlock) {
-						if (!acc.filteredList[addressId]) {
-							acc.filteredList[addressId] = 0;
+						if (!acc[addressId]) {
+							acc[addressId] = 0;
 						}
-						acc.filteredList[addressId] += numericValue;
+						acc[addressId] += numericValue;
 					}
 
 					return acc;
 				},
-				{ filteredList: {}, unfilteredList: {} }
+				{}
 			);
 
       const totalsByAddressUnpool = tax.taxUnPools.nodes.reduce((acc, { addressId, value, blockNumber }) => {
@@ -447,15 +443,19 @@ router.get(
         return acc;
       }, {});
 
-      const sortedPollTotals = Object.entries(filteredList)
+			const totalPollData = politics.map(([{ args: key }, valueData]) => {
+				const totalValue = Number(valueData.toString());
+				const addressId = key.toString();
+
+				return { totalValue, addressId };
+			});
+
+			const sortedTotalsByAddressPollTotal = totalPollData.sort((a, b) => b.totalValue - a.totalValue);
+
+      const sortedPollTotals = Object.entries(filteredData)
         .map(([addressId, totalValue]) => ({ addressId, totalValue }))
         .sort((a, b) => b.totalValue - a.totalValue)
         .slice(0, limit);
-
-			const sortedTotalsByAddressPollTotal = Object.entries(unfilteredList)
-			.map(([addressId, totalValue]) => ({ addressId, totalValue }))
-			.sort((a, b) => b.totalValue - a.totalValue)
-			.slice(0, limit);
 
 
       const sortedUnpoolTotals = Object.entries(totalsByAddressUnpool)

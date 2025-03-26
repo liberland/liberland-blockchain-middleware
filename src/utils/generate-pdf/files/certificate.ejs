@@ -90,7 +90,7 @@
     }
 
     .bottom-data{
-      margin-top: 80px;
+      margin-top: 70px;
       display: flex;
       justify-content: space-between;
     }
@@ -160,10 +160,12 @@
           <%= textsPdf.firstParagraphPart1 %> 
           <span class="text-content_fill-data"><%= companyName %></span> 
           <%= textsPdf.firstParagraphPart2 %> 
+          <span class="text-content_fill-data"><%= companyType %></span> 
+          <%= textsPdf.firstParagraphPart3 %> 
         </p>
         <p class="text-content_paragraph">
           <%= textsPdf.secondParagraphPart1 %>
-          <span class="text-content_fill-data"><%= purpose %> </span>
+          <span class="text-content_fill-data"><%= companyName %> </span>
           <%= textsPdf.secondParagraphPart2 %></p>
       </div>
 

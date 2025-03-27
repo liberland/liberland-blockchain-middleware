@@ -443,16 +443,16 @@ router.get(
         return acc;
       }, {});
 
-			const totalPollData = politics.map(([{ args: key }, valueData]) => {
+			const totalPoolData = politics.map(([{ args: key }, valueData]) => {
 				const totalValue = Number(valueData.toString());
 				const addressId = key.toString();
 
 				return { totalValue, addressId };
 			});
 
-			const sortedTotalsByAddressPollTotal = totalPollData.sort((a, b) => b.totalValue - a.totalValue);
+			const sortedTotalsByAddressPoolTotal = totalPoolData.sort((a, b) => b.totalValue - a.totalValue);
 
-      const sortedPollTotals = Object.entries(filteredData)
+      const sortedPoolTotals = Object.entries(filteredData)
         .map(([addressId, totalValue]) => ({ addressId, totalValue }))
         .sort((a, b) => b.totalValue - a.totalValue)
         .slice(0, limit);
@@ -464,9 +464,9 @@ router.get(
         .slice(0, limit);
 
       res.status(200).json({
-        sortedPollTotals,
+        sortedPoolTotals,
         sortedUnpoolTotals,
-				sortedTotalsByAddressPollTotal
+				sortedTotalsByAddressPoolTotal
       });
     } catch (e) {
       res.status(400).json({ error: e.message });

@@ -58,21 +58,21 @@ async function queryPagesCount(query, variables, ...keys) {
 	const { data } = await getApi().post('', {
 		query, variables
 	});
-	return keys.reduce((acc, key) => acc + data.data[key].totalCount + acc, 0)
+	return keys.reduce((acc, key) => acc + data.data[key].totalCount, 0)
 }
 
 
 async function getSpendingCount(userId) {
 	return queryPagesCount(
 		`
-		query Spending($userId: String, $skip: Int, $take: Int) {
-			merits(first: $take, offset: $skip, filter: { fromId: { equalTo: $userId } }) {
+		query Spending($userId: String) {
+			merits(filter: { fromId: { equalTo: $userId } }) {
 				totalCount
 			}
-			transfers(first: $take, offset: $skip, filter: { fromId: { equalTo: $userId } }) {
+			transfers(filter: { fromId: { equalTo: $userId } }) {
 				totalCount
 			}
-			assetTransfers(first: $take, offset: $skip, filter: { asset: { notEqualTo: "1" }, fromId: { equalTo: $userId } }) {
+			assetTransfers(filter: { asset: { notEqualTo: "1" }, fromId: { equalTo: $userId } }) {
 				totalCount
 			}
 		}

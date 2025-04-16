@@ -7,7 +7,7 @@ const axios = require ('axios');
 const {BN, BN_ONE, BN_ZERO, BN_MILLION, hexToU8a} = require("@polkadot/util")
 const config = require("../../config");
 const generateCertificate = require('./generate-certificate')
-const { getLastWeekEraPaidEvents, fetchAllSpendings, getSpendingCount } = require("../utils/explorer");
+const { getLastWeekEraPaidEvents, getTaxList, fetchAllSpendings, getSpendingCount } = require("../utils/explorer");
 const { stringify } = require('csv-stringify/sync');
 const pako = require('pako');
 const {formatSpendings} = require("../utils/government-spendings");
@@ -395,6 +395,86 @@ router.post(
 	wrap(async (req, res) => {
 		generateCertificate(req, res, apiPromise);
 	})
+);
+
+router.get(
+  '/tax-payers',
+  wrap(async (req, res) => {
+    try {
+      const api = await apiPromise;
+      const lastHeader = await api.rpc.chain.getHeader();
+			const politics = await api.query.llm.llmPolitics.entries();
+      const lastBlock = lastHeader.number.toNumber();
+
+      const limit = parseInt(req.query.limit, 10) || 10;
+      const months = parseInt(req.query.months, 10) || 12;
+      const blocksInDay = (3600 * 24) / 6;
+      const blocksInMonth = blocksInDay * 30.44;
+      const startBlock = Math.floor(lastBlock - (months * blocksInMonth));
+
+      console.log('limit')
+      console.log(limit)
+
+      const tax = await getTaxList();
+
+			const filteredData = tax.taxPools.nodes.reduce(
+				(acc, { addressId, value, blockNumber }) => {
+					const numericValue = Number(value);
+
+					if (blockNumber >= startBlock) {
+						if (!acc[addressId]) {
+							acc[addressId] = 0;
+						}
+						acc[addressId] += numericValue;
+					}
+
+					return acc;
+				},
+				{}
+			);
+
+      const totalsByAddressUnpool = tax.taxUnPools.nodes.reduce((acc, { addressId, value, blockNumber }) => {
+        const numericValue = Number(value);
+
+        if (blockNumber >= startBlock) {
+          if (!acc[addressId]) {
+            acc[addressId] = 0;
+          }
+          acc[addressId] += numericValue;
+        }
+
+        return acc;
+      }, {});
+
+			const totalPoolData = politics.map(([{ args: key }, valueData]) => {
+				const totalValue = Number(valueData.toString());
+				const addressId = key.toString();
+
+				return { totalValue, addressId };
+			});
+
+			const sortedTotalsByAddressPoolTotal = totalPoolData.sort((a, b) => b.totalValue - a.totalValue).slice(0, limit);
+
+      const sortedPoolTotals = Object.entries(filteredData)
+        .map(([addressId, totalValue]) => ({ addressId, totalValue }))
+        .sort((a, b) => b.totalValue - a.totalValue)
+        .slice(0, limit);
+
+
+      const sortedUnpoolTotals = Object.entries(totalsByAddressUnpool)
+        .map(([addressId, totalValue]) => ({ addressId, totalValue }))
+        .sort((a, b) => b.totalValue - a.totalValue)
+        .slice(0, limit);
+
+      res.status(200).json({
+		  sortedPoolTotals,
+		  sortedUnpoolTotals,
+		  sortedTotalsByAddressPoolTotal
+      });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  })
 );
 
 router.get(

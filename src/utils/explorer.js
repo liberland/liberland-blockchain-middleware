@@ -3,8 +3,6 @@
 const axios = require("axios");
 const config = require("../../config");
 
-
-
 const eraPaidEventsQuery = `
 query EraPaidEvents {
 	events(
@@ -20,6 +18,25 @@ query EraPaidEvents {
 		}
 	}
 }
+`;
+
+const taxQuery = `
+  query taxQuery {
+    taxUnPools{
+      nodes{
+        value
+        addressId
+        blockNumber
+      }
+    }
+    taxPools{
+      nodes{
+        value
+        addressId
+        blockNumber
+      }
+    }
+  }
 `;
 
 const getApi = () => axios.create({
@@ -51,7 +68,7 @@ async function queryAllPages(query, variables, ...keys) {
 			}
 		})();
 		return data.data[key].nodes.map((d) => ({ ...d, ...additionalInfo }));
-	}); 
+	});
 }
 
 async function queryPagesCount(query, variables, ...keys) {
@@ -153,8 +170,18 @@ async function fetchAllSpendings(userId, skip, take) {
 	return allSpendings;
 }
 
+const getTaxList = async () => {
+
+	const { data } = await getApi().post('', {
+		query: taxQuery
+	});
+
+	return data.data;
+};
+
 module.exports = {
 	fetchAllSpendings,
 	getLastWeekEraPaidEvents,
 	getSpendingCount,
+	getTaxList
 }

@@ -412,6 +412,9 @@ router.get(
       const blocksInMonth = blocksInDay * 30.44;
       const startBlock = Math.floor(lastBlock - (months * blocksInMonth));
 
+      console.log('limit')
+      console.log(limit)
+
       const tax = await getTaxList();
 
 			const filteredData = tax.taxPools.nodes.reduce(
@@ -450,7 +453,7 @@ router.get(
 				return { totalValue, addressId };
 			});
 
-			const sortedTotalsByAddressPoolTotal = totalPoolData.sort((a, b) => b.totalValue - a.totalValue);
+			const sortedTotalsByAddressPoolTotal = totalPoolData.sort((a, b) => b.totalValue - a.totalValue).slice(0, limit);
 
       const sortedPoolTotals = Object.entries(filteredData)
         .map(([addressId, totalValue]) => ({ addressId, totalValue }))
@@ -464,9 +467,9 @@ router.get(
         .slice(0, limit);
 
       res.status(200).json({
-        sortedPoolTotals,
-        sortedUnpoolTotals,
-				sortedTotalsByAddressPoolTotal
+		  sortedPoolTotals,
+		  sortedUnpoolTotals,
+		  sortedTotalsByAddressPoolTotal
       });
     } catch (e) {
       res.status(400).json({ error: e.message });

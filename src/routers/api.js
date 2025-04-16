@@ -4,10 +4,13 @@ const router = require("express").Router();
 const wrap = require("express-async-handler");
 const { ApiPromise, WsProvider, Keyring } = require("@polkadot/api");
 const axios = require ('axios');
-const {BN, BN_ONE, BN_ZERO, BN_MILLION} = require("@polkadot/util")
+const {BN, BN_ONE, BN_ZERO, BN_MILLION, hexToU8a} = require("@polkadot/util")
 const config = require("../../config");
-const generateCertificate = require('./generate-certificate');
-const { getLastWeekEraPaidEvents } = require("../utils/explorer");
+const generateCertificate = require('./generate-certificate')
+const { getLastWeekEraPaidEvents, fetchAllSpendings, getSpendingCount } = require("../utils/explorer");
+const { stringify } = require('csv-stringify/sync');
+const pako = require('pako');
+const {formatSpendings} = require("../utils/government-spendings");
 
 
 const provider = new WsProvider(config.RPC_NODE_URL);
@@ -105,6 +108,16 @@ const apiPromise = ApiPromise.create({
 			relevantContracts: 'Vec<RelevantContract>',
 			companyType: 'Text',
 			contact: 'Vec<Contact>',
+		},
+		RemarkInfo: {
+			category: 'Text',
+			project: 'Text',
+			supplier: 'Text',
+			description: 'Text',
+			finalDestination: 'Text',
+			amountInUSDAtDateOfPayment: 'u64',
+			date: 'u64',
+			currency: 'Text',
 		},
 	},
 });
@@ -515,6 +528,65 @@ router.get(
 			currentTermProgressPercent,
 			nextElectionEnd
 		});
+	})
+);
+
+router.get(
+	"/government-spendings/:walletAddress",
+	wrap(async (req, res) => {
+		try {
+			const { walletAddress } = req.params;
+			const { skip, take } = req.query;
+			const allSpendings = await fetchAllSpendings(
+				walletAddress,
+				parseInt(skip, 10) || 0,
+				parseInt(take, 10) || 50
+			);
+			const api = await apiPromise;
+
+			const spendingsDataWithRemark = formatSpendings(api, allSpendings)
+
+			res.status(200).json(spendingsDataWithRemark)
+		} catch (e) {
+			res.status(400).json({ error: e.message });
+		}
+	})
+);
+
+router.get(
+	"/government-spendings/:walletAddress/count",
+	wrap(async (req, res) => {
+		try {
+			const { walletAddress } = req.params;
+			const count = await getSpendingCount(walletAddress);
+			res.status(200).json({ count });
+		} catch (e) {
+			res.status(400).json({ error: e.message });
+		}
+	})
+);
+
+router.get(
+	"/government-spendings-csv/:walletAddress",
+	wrap(async (req, res) => {
+		try {
+			const { walletAddress } = req.params;
+			const allSpendings = await fetchAllSpendings(walletAddress);
+			const api = await apiPromise;
+
+			const spendingsDataWithRemark = formatSpendings(api, allSpendings)
+
+			const csv = stringify(spendingsDataWithRemark);
+
+			res.set(
+				"Content-Disposition",
+				'attachment; filename="congress-spendings.csv"'
+			)
+				.status(200)
+				.send(csv);
+		} catch (e) {
+			res.status(400).json({ error: e.message });
+		}
 	})
 );
 

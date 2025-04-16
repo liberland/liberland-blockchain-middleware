@@ -8,6 +8,6 @@ module.exports = {
 	},
 	IS_LIVE: true,
 	CENTRALIZED_API_URL: "https://api.liberland.org",
-	EXPLORER_GRAPHQL: "https://archive.mainnet.liberland.org",
-	ONBOARDER_PHRASE: 'REPLACE ME WITH AUTO LLD ONBOARDER ACCOUNT PHRASE'
+	ONBOARDER_PHRASE: 'REPLACE ME WITH AUTO LLD ONBOARDER ACCOUNT PHRASE',
+	EXPLORER_API_URL: "https://archive.mainnet.liberland.org",
 };

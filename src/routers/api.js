@@ -7,7 +7,7 @@ const axios = require ('axios');
 const {BN, BN_ONE, BN_ZERO, BN_MILLION, hexToU8a} = require("@polkadot/util")
 const config = require("../../config");
 const generateCertificate = require('./generate-certificate')
-const { getLastWeekEraPaidEvents, getTaxList, fetchAllSpendings, getSpendingCount } = require("../utils/explorer");
+const { getLastWeekEraPaidEvents, getTaxList, fetchAllSpendings, getSpendingCount, verifyPurchase } = require("../utils/explorer");
 const { stringify } = require('csv-stringify/sync');
 const pako = require('pako');
 const {formatSpendings} = require("../utils/government-spendings");
@@ -118,6 +118,10 @@ const apiPromise = ApiPromise.create({
 			amountInUSDAtDateOfPayment: 'u64',
 			date: 'u64',
 			currency: 'Text',
+		},
+		RemarkInfoUser: {
+			id: 'u64',
+			description: 'Text',
 		},
 	},
 });
@@ -668,6 +672,32 @@ router.get(
 			res.status(400).json({ error: e.message });
 		}
 	})
+);
+
+router.get(
+	"/verify-purchase",
+	wrap(async (req, res) => {
+		try {
+			const {
+				orderId,
+				price,
+				toId,
+			} = req.query;
+			const api = await apiPromise;
+			const lastHeader = await api.rpc.chain.getHeader();
+			const lastBlockNumber = lastHeader.number.toNumber();
+			const paid = await verifyPurchase({
+				polkadotApi: api,
+				orderId,
+				price,
+				toId,
+				minBlockNumber: lastBlockNumber - 100,
+			});
+			res.send({ paid });
+		} catch (e) {
+			res.status(400).json({ error: e.message });
+		}
+	}),
 );
 
 module.exports = router;

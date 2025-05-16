@@ -691,7 +691,7 @@ router.get(
 				orderId,
 				price,
 				toId,
-				minBlockNumber: lastBlockNumber - 100,
+				minBlockNumber: lastBlockNumber - 10000,
 			});
 			res.send({ paid });
 		} catch (e) {

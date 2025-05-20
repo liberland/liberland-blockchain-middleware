@@ -54,22 +54,29 @@ const getLastWeekEraPaidEvents = async () => {
 };
 
 
-async function queryAllPages(query, variables, ...keys) {
+async function queryAllPages(query, variables) {
 	const { data } = await getApi().post('', {
 		query, variables
 	});
-	return keys.flatMap(key => {
-		const additionalInfo = (() => {
-			switch (key) {
-				case "merits":
-					return { asset: "LLM" };
-				case "transfers":
-					return { asset: "LLD" };
-				default:
-					return {};
-			}
-		})();
-		return data.data[key].nodes.map((d) => ({ ...d, ...additionalInfo }));
+	return data.data.blocks.nodes.flatMap(node => {
+		const merits = node.merits.nodes.filter(
+			({ fromId }) => fromId === variables.userId,
+		);
+		const transfers = node.transfers.nodes.filter(
+			({ fromId }) => fromId === variables.userId,
+		);
+		const assetTransfers = node.assetTransfers.nodes.filter(
+			({ fromId, asset }) => fromId === variables.userId && asset !== '1',
+		);
+		const block = {
+			number: node.number,
+			timestamp: node.timestamp,
+		};
+		return [
+			...merits.map(m => ({ asset: 'LLM', block, ...m })),
+			...transfers.map(m => ({ asset: 'LLD', block, ...m })),
+			...assetTransfers.map(m => ({ block, ...m })),
+		];
 	});
 }
 
@@ -114,10 +121,9 @@ const tryDecodeRemark = async (polkadotApi, dataToDecode) => {
 	}
 };
 
-
 async function verifyPurchase({
-	polkadotApi, toId, price, orderId, minBlockNumber
-}) {
+								  polkadotApi, toId, price, orderId, minBlockNumber
+							  }) {
 	const query = `
 			query Verification {
 				transfers(
@@ -153,73 +159,48 @@ async function verifyPurchase({
 	return false;
 }
 
-async function getSpending(userId, skip, take) {
-	const methodParams = [
-		skip !== undefined && "$skip: Int",
-		take !== undefined && "$take: Int",
-		"$userId: String",
-	].filter(Boolean).join(", ");
-	const queryParams = (filter) => [
-		take !== undefined && "first: $take",
-		skip !== undefined && "offset: $skip",
-		filter,
-	].filter(Boolean).join(", ");
+async function fetchAllSpendings(userId, skip, take) {
 	return queryAllPages(
 		`
-		query Spending(${methodParams}) {
-			merits(${queryParams("filter: { fromId: { equalTo: $userId } }")}) {
+		query Spending($skip: Int, $take: Int, $userId: String) {
+			blocks(first: $take, offset: $skip, orderBy: NUMBER_DESC, filter: { or: [{ assetTransfersExist: true, assetTransfers: { some: { asset: { notEqualTo: "1" }, fromId: { equalTo: $userId } } } }, { transfersExist: true, transfers: { some: { fromId: { equalTo: $userId } } } }, { meritsExist: true, merits: { some: { fromId: { equalTo: $userId } } } }] }) {
 				nodes {
-					id
-					toId
-					value
-					remark
-					block {
-						number
-						timestamp
+					number
+					timestamp
+					transfers {
+						nodes {
+							id
+              				fromId
+							toId
+							value
+							remark
+						}
 					}
-				}
-			}
-			transfers(${queryParams("filter: { fromId: { equalTo: $userId } }")}) {
-				nodes {
-					id
-					toId
-					value
-					remark
-					block {
-						number
-						timestamp
+					merits {
+						nodes {
+							id
+              				fromId
+							toId
+							value
+							remark
+						}
 					}
-				}
-			}
-			assetTransfers(${queryParams(`filter: { asset: { notEqualTo: "1" }, fromId: { equalTo: $userId } }`)}) {
-				nodes {
-					id
-					asset
-					toId
-					value
-					remark
-					block {
-						number
-						timestamp
+					assetTransfers {
+						nodes {
+							id
+              				fromId
+							asset
+							toId
+							value
+							remark
+						}
 					}
 				}
 			}
 		}
 		`,
 		{ userId, skip, take },
-		"merits",
-		"transfers",
-		"assetTransfers",
 	);
-}
-
-async function fetchAllSpendings(userId, skip, take) {
-	const allSpendings = (await getSpending(userId, skip, take))
-		.sort((a, b) =>
-			parseInt(a.block.number, 10) > parseInt(b.block.number, 10) ? -1 : 1
-		);
-
-	return allSpendings;
 }
 
 const getTaxList = async () => {

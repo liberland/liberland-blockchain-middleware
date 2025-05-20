@@ -655,7 +655,8 @@ router.get(
 	wrap(async (req, res) => {
 		try {
 			const { walletAddress } = req.params;
-			const allSpendings = await fetchAllSpendings(walletAddress);
+			const size = await getSpendingCount(walletAddress);
+			const allSpendings = await fetchAllSpendings(walletAddress, 0, size);
 			const api = await apiPromise;
 
 			const spendingsDataWithRemark = formatSpendings(api, allSpendings)

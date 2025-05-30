@@ -1,9 +1,11 @@
 'use strict';
 
 const axios = require("axios");
-const config = require("../../config");
 const { hexToU8a } = require("@polkadot/util");
 const pako = require("pako");
+const config = require("../../config");
+const { webHooks } = require("./webhooks");
+const { apiPromise } = require("./polkadot");
 
 const eraPaidEventsQuery = `
 query EraPaidEvents {
@@ -44,7 +46,6 @@ const taxQuery = `
 const getApi = () => axios.create({
 	baseURL: config.EXPLORER_API_URL,
 });
-
 
 const getLastWeekEraPaidEvents = async () => {
 	const { data } = await getApi().post('', {
@@ -122,8 +123,8 @@ const tryDecodeRemark = async (polkadotApi, dataToDecode) => {
 };
 
 async function verifyPurchase({
-								  polkadotApi, toId, price, orderId, minBlockNumber
-							  }) {
+	toId, price, orderId, minBlockNumber
+}) {
 	const query = `
 			query Verification {
 				transfers(
@@ -148,15 +149,34 @@ async function verifyPurchase({
 	if (!Array.isArray(nodes)) {
 		return false;
 	}
+	const api = await apiPromise;
 	for (let i = 0; i < nodes.length; i++) {
 		const { remark } = nodes[i];
 		// eslint-disable-next-line no-await-in-loop
-		const decoded = await tryDecodeRemark(polkadotApi, remark);
+		const decoded = await tryDecodeRemark(api, remark);
 		if (decoded.id && decoded.id.toString() === orderId) {
 			return true;
 		}
 	}
 	return false;
+}
+
+async function createPurchase({
+	toId,
+	price,
+	orderId,
+	minBlockNumber,
+	lastBlockNumber,
+	callback,
+}) {
+	const name = `order-${Buffer.from(JSON.stringify({
+		toId,
+		price,
+		orderId,
+		minBlockNumber,
+		lastBlockNumber,
+	}), "utf-8").toString("base64")}`;
+	await webHooks.add(name, callback);
 }
 
 async function fetchAllSpendings(userId, skip, take) {
@@ -218,4 +238,5 @@ module.exports = {
 	getSpendingCount,
 	getTaxList,
 	verifyPurchase,
+	createPurchase,
 }

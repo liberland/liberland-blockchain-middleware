@@ -27,6 +27,20 @@ To generate PDF files, you'll need to install [Wkhtmltopdf](https://wkhtmltopdf.
     sudo apt-get -y install wkhtmltopdf
     ```
 
+#### Using webhooks
+
+In order to sign webhooks messages, you need to generate keys using these two commands (keys are not committed):
+
+```bash
+openssl genpkey -algorithm RSA -out private_key.pem -pkeyopt rsa_keygen_bits:2048
+```
+
+```bash
+openssl rsa -pubout -in private_key.pem -out public_key.pem
+```
+
+Share public_key with any API consumers that need to verify the API results
+
 ### Running
 
 To run the development server:

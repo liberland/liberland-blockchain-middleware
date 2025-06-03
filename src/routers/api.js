@@ -11,6 +11,8 @@ const { getLastWeekEraPaidEvents, getTaxList, fetchAllSpendings, getSpendingCoun
 const { stringify } = require('csv-stringify/sync');
 const pako = require('pako');
 const {formatSpendings} = require("../utils/government-spendings");
+const { isTestnetOrLocal } = require("../utils/environment");
+const { getFundingPeriodHours, getLLDAmount, getLLMAmount, canFundNow, recordFunding, getOwner } = require("../utils/faucet-contract");
 
 
 const provider = new WsProvider(config.RPC_NODE_URL);
@@ -699,6 +701,163 @@ router.get(
 			res.status(400).json({ error: e.message });
 		}
 	}),
+);
+
+router.post(
+	"/faucet/lld",
+	wrap(async (req, res) => {
+		if (!isTestnetOrLocal()) {
+			return res.status(403).json({ error: "Faucet is only available on testnet environment" });
+		}
+
+		const api = await apiPromise;
+		const { walletAddress } = req.body;
+
+		if (!walletAddress) {
+			return res.status(400).json({ error: "Wallet address is required" });
+		}
+
+		try {
+			const [owner, cooldownHours, lldAmount] = await Promise.all([getOwner(api, walletAddress), getFundingPeriodHours(api, walletAddress), getLLDAmount(api, walletAddress)]);
+
+			const keyring = new Keyring({ type: "sr25519" });
+			const sender = keyring.addFromMnemonic(config.FAUCET_PHRASE);
+
+			const isOwner = owner === sender.address;
+			if (!isOwner) {
+				console.error("Caller is not the owner of the faucet contract");
+				return res.status(403).json({ error: "Caller is not the owner of the faucet contract" });
+			}
+
+			const canClaim = await canFundNow(api, walletAddress, walletAddress, "LLD");
+
+			if (!canClaim) {
+				return res.status(429).json({
+					error: "Cooldown period active",
+					message: `You must wait ${cooldownHours} hours between LLD claims`,
+				});
+			}
+
+			const amount = api.registry.createType("Balance", lldAmount);
+
+			const sendExtrinsic = api.tx.balances.transfer(walletAddress, amount);
+
+			const txResult = new Promise((resolve, reject) =>
+				sendExtrinsic.signAndSend(sender, ({ events = [], status }) => {
+					if (status.isInBlock) {
+						const err = events.find(({ event }) => api.events.system.ExtrinsicFailed.is(event));
+						if (err) {
+							if (err.event.data[0].isModule) {
+								const decoded = api.registry.findMetaError(err.event.data[0].asModule);
+								const { docs, method, section } = decoded;
+								reject({ docs, method, section });
+							} else {
+								reject(err.toString());
+							}
+						} else {
+							resolve(events);
+						}
+					}
+				})
+			).catch(async (error) => {
+				console.error("LLD Faucet error:", error);
+				res.status(500).json({ error: error.message || "Failed to send LLD tokens" });
+			});
+
+			await txResult;
+
+			await recordFunding(api, walletAddress, "LLD");
+
+			res.status(200).json({
+				success: true,
+				message: `Successfully sent ${lldAmount / 1000000000000} LLD to ${walletAddress}`,
+				amount: lldAmount,
+				tokenType: "LLD",
+				cooldownHours,
+				nextClaimAvailable: Date.now() + cooldownHours * 3600 * 1000,
+			});
+		} catch (error) {
+			console.error("LLD Faucet error:", error);
+			res.status(500).json({ error: error.message || "Failed to send LLD tokens" });
+		}
+	})
+);
+
+// LLM Faucet endpoint
+router.post(
+	"/faucet/llm",
+	wrap(async (req, res) => {
+		if (!isTestnetOrLocal()) {
+			return res.status(403).json({ error: "Faucet is only available on testnet environment" });
+		}
+
+		const api = await apiPromise;
+		const { walletAddress } = req.body;
+
+		if (!walletAddress) {
+			return res.status(400).json({ error: "Wallet address is required" });
+		}
+
+		try {
+			const [owner, cooldownHours, llmAmount] = await Promise.all([getOwner(api, walletAddress), getFundingPeriodHours(api, walletAddress), getLLMAmount(api, walletAddress)]);
+
+			const keyring = new Keyring({ type: "sr25519" });
+			const sender = keyring.addFromMnemonic(config.FAUCET_PHRASE);
+			
+			const isOwner = owner === sender.address;
+			if (!isOwner) {
+				return res.status(403).json({ error: "Caller is not the owner of the faucet contract" });
+			}
+
+			const canClaim = await canFundNow(api, walletAddress, walletAddress, "LLM");
+
+			if (!canClaim) {
+				return res.status(429).json({
+					error: "Cooldown period active",
+					message: `You must wait ${cooldownHours} hours between LLM claims`,
+				});
+			}
+
+			const amount = api.registry.createType("Balance", llmAmount);
+
+			const sendExtrinsic = api.tx.assets.transfer(1, walletAddress, amount);
+
+			const txResult = new Promise((resolve, reject) =>
+				sendExtrinsic.signAndSend(sender, ({ events = [], status }) => {
+					if (status.isInBlock) {
+						const err = events.find(({ event }) => api.events.system.ExtrinsicFailed.is(event));
+						if (err) {
+							if (err.event.data[0].isModule) {
+								const decoded = api.registry.findMetaError(err.event.data[0].asModule);
+								const { docs, method, section } = decoded;
+								reject({ docs, method, section });
+							} else {
+								reject(err.toString());
+							}
+						} else {
+							resolve(events);
+						}
+					}
+				})
+			);
+
+			await txResult;
+
+			await recordFunding(api, walletAddress, "LLM");
+
+			res.status(200).json({
+				success: true,
+				message: `Successfully sent ${llmAmount / 1000000000} LLM to ${walletAddress}`,
+				amount: llmAmount,
+				tokenType: "LLM",
+				cooldownHours,
+				nextClaimAvailable: Date.now() + cooldownHours * 3600 * 1000,
+			});
+		} catch (error) {
+			console.error("LLM Faucet error:", error);
+			res.status(500).json({ error: error.message || "Failed to send LLM tokens" });
+		}
+	})
 );
 
 module.exports = router;

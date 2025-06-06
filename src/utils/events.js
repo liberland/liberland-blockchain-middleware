@@ -29,42 +29,46 @@ async function blockWatcher() {
     const api = await apiPromise;
 
     api.rpc.chain.subscribeNewHeads(async (lastHeader) => {
-        const currentBlockNumber = lastHeader.number.toNumber();
-        if (currentBlockNumber % interval === 0) {
-            const registered = listHooks();
-            const entries = Object.entries(registered);
-            await Promise.all(entries.map(async ([key, callbacks]) => {
-                const remove = () => Promise.all(callbacks.map(callback => webHooks.remove(key, callback)));
-                if (key.startsWith("order-")) {
-                    const {
-                        toId,
-                        price,
-                        orderId,
-                        minBlockNumber,
-                        lastBlockNumber,
-                    } = JSON.parse(Buffer.from(key.split("order-")[1], "base64").toString("utf-8"));
-                    if (currentBlockNumber - lastBlockNumber > oldest) {
-                        await remove();
-                    } else {
-                        const isPaid = await verifyPurchase({
+        try {
+            const currentBlockNumber = lastHeader.number.toNumber();
+            if (currentBlockNumber % interval === 0) {
+                const registered = listHooks();
+                const entries = Object.entries(registered);
+                await Promise.all(entries.map(async ([key, callbacks]) => {
+                    const remove = () => Promise.all(callbacks.map(callback => webHooks.remove(key, callback)));
+                    if (key.startsWith("order-")) {
+                        const {
                             toId,
-                            minBlockNumber,
-                            orderId,
                             price,
-                        });
-                        if (isPaid) {
-                            webHooks.trigger(key, {
-                                toId,
-                                price,
-                                orderId,
-                            }, {
-                                secret: signInput(orderId),
-                            });
+                            orderId,
+                            minBlockNumber,
+                            lastBlockNumber,
+                        } = JSON.parse(Buffer.from(key.split("order-")[1], "base64").toString("utf-8"));
+                        if (currentBlockNumber - lastBlockNumber > oldest) {
                             await remove();
+                        } else {
+                            const isPaid = await verifyPurchase({
+                                toId,
+                                minBlockNumber,
+                                orderId,
+                                price,
+                            });
+                            if (isPaid) {
+                                webHooks.trigger(key, {
+                                    toId,
+                                    price,
+                                    orderId,
+                                }, {
+                                    secret: signInput(orderId),
+                                });
+                                await remove();
+                            }
                         }
                     }
-                }
-            }));
+                }));
+            }
+        } catch (e) {
+            console.error(e);
         }
     });
 }

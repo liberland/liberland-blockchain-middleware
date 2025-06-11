@@ -33,9 +33,8 @@ async function blockWatcher() {
             const currentBlockNumber = lastHeader.number.toNumber();
             if (currentBlockNumber % interval === 0) {
                 const registered = listHooks();
-                const entries = Object.entries(registered);
-                await Promise.all(entries.map(async ([key, callbacks]) => {
-                    const remove = () => Promise.all(callbacks.map(callback => webHooks.remove(key, callback)));
+                const entries = Object.keys(registered);
+                await Promise.all(entries.map(async (key) => {
                     if (key.startsWith("order-")) {
                         const {
                             toId,
@@ -45,7 +44,7 @@ async function blockWatcher() {
                             lastBlockNumber,
                         } = JSON.parse(Buffer.from(key.split("order-")[1], "base64").toString("utf-8"));
                         if (currentBlockNumber - lastBlockNumber > oldest) {
-                            await remove();
+                            await webHooks.remove(key);
                         } else {
                             const isPaid = await verifyPurchase({
                                 toId,
@@ -61,7 +60,7 @@ async function blockWatcher() {
                                 }, {
                                     secret: signInput(orderId),
                                 });
-                                await remove();
+                                await webHooks.remove();
                             }
                         }
                     }

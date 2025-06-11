@@ -6,6 +6,7 @@ const prom = require('express-prom-bundle');
 const express = require('express');
 const config = require('../config');
 const apiRouter = require('./routers');
+const { blockWatcher } = require('./utils/events');
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use(express.json());
 app.use(config.API_ROUTE_PREFIX, apiRouter);
 app.get("*", (req, res) => res.status(404).json({ error: "Not Found" }));
 
-app.listen(config.SERVER.PORT, () => {
+app.listen(config.SERVER.PORT, async () => {
+	await blockWatcher();
 	debug(`Listening on ${config.SERVER.URL}`);
 });

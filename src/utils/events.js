@@ -60,7 +60,7 @@ async function blockWatcher() {
                                 }, {
                                     secret: signInput(orderId),
                                 });
-                                await webHooks.remove();
+                                await webHooks.remove(key);
                             }
                         }
                     }

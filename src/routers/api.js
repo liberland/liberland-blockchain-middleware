@@ -8,7 +8,7 @@ const {BN, BN_ONE, BN_ZERO, BN_MILLION } = require("@polkadot/util")
 const { stringify } = require("csv-stringify/sync");
 
 const generateCertificate = require('./generate-certificate')
-const { getLastWeekEraPaidEvents, getTaxList, fetchAllSpendings, getSpendingCount, verifyPurchase, createPurchase } = require("../utils/explorer");
+const { getLastWeekEraPaidEvents, getTaxList, fetchAllSpendings, verifyPurchase, createPurchase } = require("../utils/explorer");
 const {formatSpendings} = require("../utils/government-spendings");
 const { apiPromise } = require("../utils/polkadot");
 const config = require("../../config");
@@ -507,11 +507,8 @@ router.get(
 	wrap(async (req, res) => {
 		try {
 			const { walletAddress } = req.params;
-			const { skip, take } = req.query;
 			const allSpendings = await fetchAllSpendings(
 				walletAddress,
-				parseInt(skip, 10) || 0,
-				parseInt(take, 10) || 50
 			);
 			const api = await apiPromise;
 
@@ -525,25 +522,11 @@ router.get(
 );
 
 router.get(
-	"/government-spendings/:walletAddress/count",
-	wrap(async (req, res) => {
-		try {
-			const { walletAddress } = req.params;
-			const count = await getSpendingCount(walletAddress);
-			res.status(200).json({ count });
-		} catch (e) {
-			res.status(400).json({ error: e.message });
-		}
-	})
-);
-
-router.get(
 	"/government-spendings-csv/:walletAddress",
 	wrap(async (req, res) => {
 		try {
 			const { walletAddress } = req.params;
-			const size = await getSpendingCount(walletAddress);
-			const allSpendings = await fetchAllSpendings(walletAddress, 0, size);
+			const allSpendings = await fetchAllSpendings(walletAddress);
 			const api = await apiPromise;
 
 			const spendingsDataWithRemark = formatSpendings(api, allSpendings)

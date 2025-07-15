@@ -10,6 +10,9 @@ const { stringify } = require("csv-stringify/sync");
 const generateCertificate = require('./generate-certificate')
 const { getLastWeekEraPaidEvents, getTaxList, fetchAllSpendings, verifyPurchase, createPurchase } = require("../utils/explorer");
 const {formatSpendings} = require("../utils/government-spendings");
+const { isTestnetOrLocal } = require("../utils/environment");
+const { canFundNowGraphQL, getLastFundingTime, FAUCET_CONFIG } = require("../utils/faucet-graphql");
+
 const { apiPromise } = require("../utils/polkadot");
 const config = require("../../config");
 
@@ -598,5 +601,187 @@ router.get(
 		}
 	}),
 );
+
+router.post(
+	"/faucet/lld",
+	wrap(async (req, res) => {
+		if (!isTestnetOrLocal()) {
+			return res.status(403).json({ error: "Faucet is only available on testnet environment" });
+		}
+
+		const api = await apiPromise;
+		const { walletAddress } = req.body;
+
+		if (!walletAddress) {
+			return res.status(400).json({ error: "Wallet address is required" });
+		}
+
+		try {
+			const keyring = new Keyring({ type: "sr25519" });
+			const sender = keyring.addFromMnemonic(config.FAUCET_PHRASE);
+			const faucetAddress = sender.address;
+
+			const canClaim = await canFundNowGraphQL(walletAddress, "LLD", faucetAddress, FAUCET_CONFIG.COOLDOWN_HOURS, api);
+
+			if (!canClaim) {
+				const nextClaimTime = await getLastFundingTime(walletAddress, "LLD", faucetAddress, FAUCET_CONFIG.COOLDOWN_HOURS, api);
+				return res.status(429).json({
+					error: "Cooldown period active",
+					message: `You must wait ${FAUCET_CONFIG.COOLDOWN_HOURS} hours between LLD claims`,
+					nextClaimAvailable: nextClaimTime.toISOString(),
+				});
+			}
+
+			const lldAmount = FAUCET_CONFIG.LLD_AMOUNT;
+			const amount = api.registry.createType("Balance", lldAmount);
+
+			const sendExtrinsic = api.tx.balances.transfer(walletAddress, amount);
+
+			const txResult = new Promise((resolve, reject) =>
+				sendExtrinsic.signAndSend(sender, ({ events = [], status }) => {
+					if (status.isInBlock) {
+						const err = events.find(({ event }) => api.events.system.ExtrinsicFailed.is(event));
+						if (err) {
+							if (err.event.data[0].isModule) {
+								const decoded = api.registry.findMetaError(err.event.data[0].asModule);
+								const { docs, method, section } = decoded;
+								reject({ docs, method, section });
+							} else {
+								reject(err.toString());
+							}
+						} else {
+							resolve(events);
+						}
+					}
+				})
+			);
+
+			await txResult;
+
+			res.status(200).json({
+				success: true,
+				message: `Successfully sent ${lldAmount / 1000000000000} LLD to ${walletAddress}`,
+				amount: lldAmount,
+				tokenType: "LLD",
+				cooldownHours: FAUCET_CONFIG.COOLDOWN_HOURS,
+				nextClaimAvailable: Date.now() + FAUCET_CONFIG.COOLDOWN_HOURS * 3600 * 1000,
+			});
+		} catch (error) {
+			console.error("LLD Faucet error:", error);
+			res.status(500).json({ error: error.message || "Failed to send LLD tokens" });
+		}
+	})
+);
+
+router.post(
+	"/faucet/llm",
+	wrap(async (req, res) => {
+		if (!isTestnetOrLocal()) {
+			return res.status(403).json({ error: "Faucet is only available on testnet environment" });
+		}
+
+		const api = await apiPromise;
+		const { walletAddress } = req.body;
+
+		if (!walletAddress) {
+			return res.status(400).json({ error: "Wallet address is required" });
+		}
+
+		try {
+			const keyring = new Keyring({ type: "sr25519" });
+			const sender = keyring.addFromMnemonic(config.FAUCET_PHRASE);
+			const faucetAddress = sender.address;
+
+			const canClaim = await canFundNowGraphQL(walletAddress, "LLM", faucetAddress, FAUCET_CONFIG.COOLDOWN_HOURS, api);
+
+			if (!canClaim) {
+				const nextClaimTime = await getLastFundingTime(walletAddress, "LLM", faucetAddress, FAUCET_CONFIG.COOLDOWN_HOURS, api);
+				return res.status(429).json({
+					error: "Cooldown period active",
+					message: `You must wait ${FAUCET_CONFIG.COOLDOWN_HOURS} hours between LLM claims`,
+					nextClaimAvailable: nextClaimTime,
+				});
+			}
+
+			const llmAmount = FAUCET_CONFIG.LLM_AMOUNT;
+			const amount = api.registry.createType("Balance", llmAmount);
+
+			const sendExtrinsic = api.tx.assets.transfer(1, walletAddress, amount);
+
+			const txResult = new Promise((resolve, reject) =>
+				sendExtrinsic.signAndSend(sender, ({ events = [], status }) => {
+					if (status.isInBlock) {
+						const err = events.find(({ event }) => api.events.system.ExtrinsicFailed.is(event));
+						if (err) {
+							if (err.event.data[0].isModule) {
+								const decoded = api.registry.findMetaError(err.event.data[0].asModule);
+								const { docs, method, section } = decoded;
+								reject({ docs, method, section });
+							} else {
+								reject(err.toString());
+							}
+						} else {
+							resolve(events);
+						}
+					}
+				})
+			);
+
+			await txResult;
+
+			res.status(200).json({
+				success: true,
+				message: `Successfully sent ${llmAmount / 1000000000} LLM to ${walletAddress}`,
+				amount: llmAmount,
+				tokenType: "LLM",
+				cooldownHours: FAUCET_CONFIG.COOLDOWN_HOURS,
+				nextClaimAvailable: Date.now() + FAUCET_CONFIG.COOLDOWN_HOURS * 3600 * 1000,
+			});
+		} catch (error) {
+			console.error("LLM Faucet error:", error);
+			res.status(500).json({ error: error.message || "Failed to send LLM tokens" });
+		}
+	})
+);
+
+router.get(
+	"/faucet/cooldown",
+	wrap(async (req, res) => {
+		const api = await apiPromise;
+		const { walletAddress, token } = req.query;
+		
+		if (!walletAddress || !token) {
+			return res.status(400).json({ error: "walletAddress and token query parameters are required" });
+		}
+
+		if (token !== "LLD" && token !== "LLM") {
+			return res.status(400).json({ error: "token must be either 'LLD' or 'LLM'" });
+		}
+
+		try {
+			const keyring = new Keyring({ type: "sr25519" });
+			const sender = keyring.addFromMnemonic(config.FAUCET_PHRASE);
+			const faucetAddress = sender.address;
+
+			const lastFundingTime = await getLastFundingTime(walletAddress, token, faucetAddress, FAUCET_CONFIG.COOLDOWN_HOURS, api);
+
+			res.status(200).json({
+				lastFundingTime,
+			});
+		} catch (error) {
+			console.error("Faucet cooldown check error:", error);
+			res.status(500).json({ error: error.message || "Failed to check cooldown status" });
+		}
+	}),
+);
+
+router.get("/faucet/amount/:token", wrap(async (req, res) => {
+	const { token } = req.params;
+	if(token !== "lld" && token !== "llm") {
+		return res.status(400).json({ error: "Invalid token" });
+	}
+	const amount = FAUCET_CONFIG[token.toUpperCase() + "_AMOUNT"];
+	res.status(200).json({ amount: amount / 1000000000000 });
+}));
 
 module.exports = router;

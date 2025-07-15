@@ -1,18 +1,19 @@
-'use strict';
+"use strict";
 
-const { deepMerge } = require('./src/utils/common');
-const { version } = require('./package.json');
+const { deepMerge } = require("./src/utils/common");
+const { version } = require("./package.json");
 
 const config = {
-	ENVIRONMENT: process.env.npm_package_config_env || 'development',
+	ENVIRONMENT: process.env.npm_package_config_env || "development",
 	IS_LIVE: false,
 	SERVER: {
 		PORT: process.env.npm_package_config_port || 8060,
 	},
-	API_ROUTE_PREFIX: `/v${version.split('.')[0]}`,
+	API_ROUTE_PREFIX: `/v${version.split(".")[0]}`,
 	METAVERSE_NFTs_ID: 1,
 	LAND_NFTs_ID: 0,
-	ONBOARDER_PHRASE: 'REPLACE ME WITH AUTO LLD ONBOARDER ACCOUNT PHRASE',
+	ONBOARDER_PHRASE: "REPLACE ME WITH AUTO LLD ONBOARDER ACCOUNT PHRASE",
+	FAUCET_PHRASE: "REPLACE ME WITH FAUCET ACCOUNT PHRASE",
 	CENTRALIZED_API_URL: "http://localhost:8010",
 	EXPLORER_API_URL: "http://localhost:3000",
 };
@@ -28,6 +29,6 @@ try {
 	console.error(e.message);
 }
 
-console.log('ENVIRONMENT', config.ENVIRONMENT);
+console.log("ENVIRONMENT", config.ENVIRONMENT);
 
 module.exports = Object.freeze(config);

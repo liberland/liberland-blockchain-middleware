@@ -113,7 +113,7 @@ async function verifyPurchase({
 	const transfers = data.data && data.data.transfers;
 	const nodes = transfers && transfers.nodes;
 	if (!Array.isArray(nodes)) {
-		return false;
+		return [false];
 	}
 	const api = await apiPromise;
 	for (let i = 0; i < nodes.length; i++) {
@@ -121,10 +121,10 @@ async function verifyPurchase({
 		// eslint-disable-next-line no-await-in-loop
 		const decoded = await tryDecodeRemark(api, remark);
 		if (decoded.id && decoded.id.toString() === orderId) {
-			return true;
+			return [true, decoded.description.toString()];
 		}
 	}
-	return false;
+	return [false];
 }
 
 async function createPurchase({

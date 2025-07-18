@@ -586,7 +586,7 @@ router.get(
 			const api = await apiPromise;
 			const lastHeader = await api.rpc.chain.getHeader();
 			const lastBlockNumber = lastHeader.number.toNumber();
-			const paid = await verifyPurchase({
+			const [paid] = await verifyPurchase({
 				orderId,
 				price,
 				toId,

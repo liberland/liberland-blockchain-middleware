@@ -35,35 +35,43 @@ async function blockWatcher() {
                 const registered = listHooks();
                 const entries = Object.keys(registered);
                 await Promise.all(entries.map(async (key) => {
-                    if (key.startsWith("order-")) {
-                        const {
-                            toId,
-                            price,
-                            orderId,
-                            minBlockNumber,
-                            lastBlockNumber,
-                        } = JSON.parse(Buffer.from(key.split("order-")[1], "base64").toString("utf-8"));
-                        if (currentBlockNumber - lastBlockNumber > oldest) {
-                            await webHooks.remove(key);
-                        } else {
-                            const [isPaid, remark] = await verifyPurchase({
+                    try {
+                        if (key.startsWith("order-")) {
+                            const {
                                 toId,
-                                minBlockNumber,
-                                orderId,
                                 price,
-                            });
-                            if (isPaid) {
-                                webHooks.trigger(key, {
-                                    toId,
-                                    price,
-                                    orderId,
-                                    remark,
-                                }, {
-                                    secret: signInput(orderId),
-                                });
+                                orderId,
+                                assetId,
+                                minBlockNumber,
+                                lastBlockNumber,
+                            } = JSON.parse(Buffer.from(key.split("order-")[1], "base64").toString("utf-8"));
+                            if (currentBlockNumber - lastBlockNumber > oldest) {
                                 await webHooks.remove(key);
+                            } else {
+                                const [isPaid, remark] = await verifyPurchase({
+                                    toId,
+                                    minBlockNumber,
+                                    orderId,
+                                    price,
+                                    assetId,
+                                });
+                                if (isPaid) {
+                                    webHooks.trigger(key, {
+                                        toId,
+                                        price,
+                                        orderId,
+                                        assetId: assetId || 'Native',
+                                        remark,
+                                    }, {
+                                        secret: signInput(orderId),
+                                    });
+                                    await webHooks.remove(key);
+                                }
                             }
                         }
+                    } catch (e) {
+                        console.error(e);
+                        await webHooks.remove(key);
                     }
                 }));
             }

@@ -46,7 +46,7 @@ async function blockWatcher() {
                         if (currentBlockNumber - lastBlockNumber > oldest) {
                             await webHooks.remove(key);
                         } else {
-                            const isPaid = await verifyPurchase({
+                            const [isPaid, remark] = await verifyPurchase({
                                 toId,
                                 minBlockNumber,
                                 orderId,
@@ -57,6 +57,7 @@ async function blockWatcher() {
                                     toId,
                                     price,
                                     orderId,
+                                    remark,
                                 }, {
                                     secret: signInput(orderId),
                                 });

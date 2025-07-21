@@ -553,6 +553,7 @@ router.post(
 				orderId,
 				price,
 				toId,
+				assetId,
 				callback,
 			} = req.body;
 			const api = await apiPromise;
@@ -563,6 +564,7 @@ router.post(
 				toId,
 				price,
 				orderId,
+				assetId,
 				minBlockNumber,
 				lastBlockNumber,
 				callback,
@@ -582,6 +584,7 @@ router.get(
 				orderId,
 				price,
 				toId,
+				assetId,
 			} = req.query;
 			const api = await apiPromise;
 			const lastHeader = await api.rpc.chain.getHeader();
@@ -590,6 +593,7 @@ router.get(
 				orderId,
 				price,
 				toId,
+				assetId,
 				minBlockNumber: lastBlockNumber - 10000,
 			});
 			res.send({ paid });

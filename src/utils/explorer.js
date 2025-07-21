@@ -89,28 +89,48 @@ const tryDecodeRemark = async (polkadotApi, dataToDecode) => {
 };
 
 async function verifyPurchase({
-	toId, price, orderId, minBlockNumber
+	toId,
+	price,
+	orderId,
+	assetId,
+	minBlockNumber,
 }) {
-	const query = `
-			query Verification {
-				transfers(
-					filter: {
-						remark: { isNull: false },
-						toId: { equalTo: "${toId}" },
-						value: { equalTo: "${price}" },
-						blockNumber: { greaterThan: "${minBlockNumber}" }
-					}
-				) {
-					nodes {
-						remark
-					}
+	const query = assetId ? `
+		query AssetVerification {
+			assetTransfers(
+				filter: {
+					remark: { isNull: false },
+					asset: { equalTo: "${assetId}" }
+					toId: { equalTo: "${toId}" },
+					value: { equalTo: "${price}" },
+					blockNumber: { greaterThan: "${minBlockNumber}" }
+				}
+			) {
+				nodes {
+					remark
 				}
 			}
+		}
+	` : `
+		query Verification {
+			transfers(
+				filter: {
+					remark: { isNull: false },
+					toId: { equalTo: "${toId}" },
+					value: { equalTo: "${price}" },
+					blockNumber: { greaterThan: "${minBlockNumber}" }
+				}
+			) {
+				nodes {
+					remark
+				}
+			}
+		}
 	`;
 	const { data } = await getApi().post('', {
 		query,
 	});
-	const transfers = data.data && data.data.transfers;
+	const transfers = data.data && data.data[assetId ? "assetTransfers" : "transfers"];
 	const nodes = transfers && transfers.nodes;
 	if (!Array.isArray(nodes)) {
 		return [false];
@@ -131,6 +151,7 @@ async function createPurchase({
 	toId,
 	price,
 	orderId,
+	assetId,
 	minBlockNumber,
 	lastBlockNumber,
 	callback,
@@ -139,6 +160,7 @@ async function createPurchase({
 		toId,
 		price,
 		orderId,
+		assetId,
 		minBlockNumber,
 		lastBlockNumber,
 	}), "utf-8").toString("base64")}`;

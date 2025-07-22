@@ -56,14 +56,15 @@ async function blockWatcher() {
                                     assetId,
                                 });
                                 if (isPaid) {
-                                    webHooks.trigger(key, {
+                                    const response = {
                                         toId,
                                         price,
                                         orderId,
                                         assetId: assetId || 'Native',
                                         remark,
-                                    }, {
-                                        secret: signInput(orderId),
+                                    };
+                                    webHooks.trigger(key, response, {
+                                        secret: signInput(JSON.stringify(response)),
                                     });
                                     await webHooks.remove(key);
                                 }

@@ -108,6 +108,7 @@ async function verifyPurchase({
 			) {
 				nodes {
 					remark
+					fromId
 				}
 			}
 		}
@@ -123,6 +124,7 @@ async function verifyPurchase({
 			) {
 				nodes {
 					remark
+					fromId
 				}
 			}
 		}
@@ -137,11 +139,11 @@ async function verifyPurchase({
 	}
 	const api = await apiPromise;
 	for (let i = 0; i < nodes.length; i++) {
-		const { remark } = nodes[i];
+		const { remark, fromId } = nodes[i];
 		// eslint-disable-next-line no-await-in-loop
 		const decoded = await tryDecodeRemark(api, remark);
 		if (decoded.id && decoded.id.toString() === orderId) {
-			return [true, decoded.description.toString()];
+			return [true, decoded.description.toString(), fromId];
 		}
 	}
 	return [false];

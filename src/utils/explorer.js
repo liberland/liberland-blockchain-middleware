@@ -81,10 +81,21 @@ const tryDecodeRemark = async (polkadotApi, dataToDecode) => {
 	try {
 		const compressedData = hexToU8a(dataToDecode);
 		const decompressed = pako.inflate(compressedData);
-		const remarkInfo = polkadotApi.createType('RemarkInfoUser', decompressed);
-		return remarkInfo;
+		try {
+			const remarkInfo = polkadotApi.createType('RemarkInfoUser', decompressed);
+			return [remarkInfo, "user"];
+		} catch (_) {
+			try {
+				const remarkInfo = polkadotApi
+					.createType("RemarkInfo", decompressed);
+				return [remarkInfo, "govt"];
+			} catch (__) {
+				return [{}, "none"];
+			}
+			
+		}
 	} catch (_) {
-		return {};
+		return [{}, "none"];
 	}
 };
 
@@ -141,10 +152,24 @@ async function verifyPurchase({
 	for (let i = 0; i < nodes.length; i++) {
 		const { remark, fromId } = nodes[i];
 		// eslint-disable-next-line no-await-in-loop
-		const decoded = await tryDecodeRemark(api, remark);
-		if (decoded.id && decoded.id.toString() === orderId) {
-			return [true, decoded.description.toString(), fromId];
+		const [decoded, type] = await tryDecodeRemark(api, remark);
+		switch (type) {
+			case "user":
+				if (decoded.id && decoded.id.toString() === orderId) {
+					return [true, decoded.description.toString(), fromId];
+				}
+				break;
+			case "govt":
+				// eslint-disable-next-line no-case-declarations
+				const [ethAddress, id] = decoded.toJSON().finalDestination.split(", ");
+				if (id === orderId) {
+					return [true, ethAddress, fromId];
+				}
+				break;
+			default:
+				break;
 		}
+		
 	}
 	return [false];
 }

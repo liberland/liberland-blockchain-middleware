@@ -77,25 +77,37 @@ async function queryAllPages(query, variables, ...keys) {
 	}).sort(({ block: aBlock }, { block: bBlock }) => parseInt(bBlock.number, 10) - parseInt(aBlock.number, 10));
 }
 
+const tryDecodeGovtRemark = (polkadotApi, decompressed) => {
+	try {
+		return polkadotApi.createType('RemarkInfo', decompressed).toJSON();
+	} catch (_) {
+		return {};
+	}
+};
+
+const tryDecodeUserRemark = (polkadotApi, decompressed) => {
+	try {
+		return polkadotApi.createType('RemarkInfoUser', decompressed).toJSON();
+	} catch (_) {
+		return {};
+	}
+};
+
 const tryDecodeRemark = async (polkadotApi, dataToDecode) => {
 	try {
 		const compressedData = hexToU8a(dataToDecode);
 		const decompressed = pako.inflate(compressedData);
-		try {
-			const remarkInfo = polkadotApi.createType('RemarkInfoUser', decompressed);
-			return [remarkInfo, "user"];
-		} catch (_) {
-			try {
-				const remarkInfo = polkadotApi
-					.createType("RemarkInfo", decompressed);
-				return [remarkInfo, "govt"];
-			} catch (__) {
-				return [{}, "none"];
-			}
-			
+		const maybeGovt = tryDecodeGovtRemark(polkadotApi, decompressed);
+		if (maybeGovt.finalDestination) {
+			return [maybeGovt, 'govt'];
 		}
+		const maybeUser = tryDecodeUserRemark(polkadotApi, decompressed);
+		if (maybeUser.id) {
+			return [maybeUser, 'user'];
+		}
+		return [{}, 'none'];
 	} catch (_) {
-		return [{}, "none"];
+		return [{}, 'none'];
 	}
 };
 
@@ -155,13 +167,13 @@ async function verifyPurchase({
 		const [decoded, type] = await tryDecodeRemark(api, remark);
 		switch (type) {
 			case "user":
-				if (decoded.id && decoded.id.toString() === orderId) {
-					return [true, decoded.description.toString(), fromId];
+				if (decoded.id && decoded.id.toString() === orderId.toString()) { // Ensure we don't get a number here
+					return [true, decoded.description, fromId];
 				}
 				break;
 			case "govt":
 				// eslint-disable-next-line no-case-declarations
-				const [ethAddress, id] = decoded.toJSON().finalDestination.split(", ");
+				const [ethAddress, id] = decoded.finalDestination.split(", ");
 				if (id === orderId) {
 					return [true, ethAddress, fromId];
 				}

@@ -1,5 +1,6 @@
 "use strict";
 
+const debug = require('debug')('events');
 const { createSign } = require("crypto");
 const { readFileSync, existsSync } = require("fs");
 const path = require("path");
@@ -21,6 +22,38 @@ function signInput(input) {
   
     const signature = sign.sign(privateKey, "base64");
     return signature;
+}
+
+function orderKeysAlphabetically(obj) {
+    return Object
+        .entries(obj)
+        .sort(([aKey], [bKey]) => aKey.localeCompare(bKey, "en"))
+        .reduce((acc, [key, value]) => {
+            acc[key] = value;
+            return acc;
+        }, {});
+}
+
+async function triggerWithRetry(key, response, attempts) {
+    const successKey = `${key}.success`;
+    const failureKey = `${key}.failure`;
+    for (let attempt = 0; attempt < attempts; attempt++) {
+        const listener = new Promise((resolve) => {
+            webHooks.getEmitter().on(successKey, () => {
+                resolve();
+            });
+            webHooks.getEmitter().on(failureKey, async (shortname, statusCode, body) => {
+                console.error('Error:', statusCode, 'on', shortname, 'and body', body, 'attempt', attempt);
+                debug('Error:', statusCode, 'on', shortname, 'and body', body, 'attempt', attempt);
+                resolve();
+            });
+        });
+        webHooks.trigger(key, response, {
+            secret: signInput(JSON.stringify(response)),
+        });
+        // eslint-disable-next-line no-await-in-loop
+        await listener;
+    }
 }
 
 async function blockWatcher() {
@@ -56,17 +89,15 @@ async function blockWatcher() {
                                     assetId,
                                 });
                                 if (isPaid) {
-                                    const response = {
+                                    const response = orderKeysAlphabetically({
                                         toId,
                                         price,
                                         orderId,
                                         assetId: assetId || 'Native',
                                         remark,
                                         fromId,
-                                    };
-                                    webHooks.trigger(key, response, {
-                                        secret: signInput(JSON.stringify(response)),
                                     });
+                                    await triggerWithRetry(key, response, 3);
                                     await webHooks.remove(key);
                                 }
                             }

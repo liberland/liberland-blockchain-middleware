@@ -34,26 +34,23 @@ function orderKeysAlphabetically(obj) {
         }, {});
 }
 
-async function triggerWithRetry(key, response, attempts) {
+async function triggerAndCheck(key, response) {
     const successKey = `${key}.success`;
     const failureKey = `${key}.failure`;
-    for (let attempt = 0; attempt < attempts; attempt++) {
-        const listener = new Promise((resolve) => {
-            webHooks.getEmitter().on(successKey, () => {
-                resolve();
-            });
-            webHooks.getEmitter().on(failureKey, async (shortname, statusCode, body) => {
-                console.error('Error:', statusCode, 'on', shortname, 'and body', body, 'attempt', attempt);
-                debug('Error:', statusCode, 'on', shortname, 'and body', body, 'attempt', attempt);
-                resolve();
-            });
+    const listener = new Promise((resolve) => {
+        webHooks.getEmitter().on(successKey, () => {
+            resolve("success");
         });
-        webHooks.trigger(key, response, {
-            secret: signInput(JSON.stringify(response)),
+        webHooks.getEmitter().on(failureKey, async (shortname, statusCode, body) => {
+            debug('Error:', statusCode, 'on', shortname, 'and body', body);
+            resolve("error");
         });
-        // eslint-disable-next-line no-await-in-loop
-        await listener;
-    }
+    });
+    webHooks.trigger(key, response, {
+        secret: signInput(JSON.stringify(response)),
+    });
+    const result = await listener;
+    return result === "success";
 }
 
 async function blockWatcher() {
@@ -97,8 +94,10 @@ async function blockWatcher() {
                                         remark,
                                         fromId,
                                     });
-                                    await triggerWithRetry(key, response, 3);
-                                    await webHooks.remove(key);
+                                    const result = await triggerAndCheck(key, response, 3);
+                                    if (result) {
+                                        await webHooks.remove(key);
+                                    }
                                 }
                             }
                         }

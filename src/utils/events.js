@@ -2,6 +2,7 @@
 
 const debug = require('debug')('events');
 const { createSign } = require("crypto");
+const stringify = require('json-stable-stringify');
 const { readFileSync, existsSync } = require("fs");
 const path = require("path");
 const { verifyPurchase } = require("./explorer");
@@ -24,16 +25,6 @@ function signInput(input) {
     return signature;
 }
 
-function orderKeysAlphabetically(obj) {
-    return Object
-        .entries(obj)
-        .sort(([aKey], [bKey]) => aKey.localeCompare(bKey, "en"))
-        .reduce((acc, [key, value]) => {
-            acc[key] = value;
-            return acc;
-        }, {});
-}
-
 async function triggerAndCheck(key, response) {
     const successKey = `${key}.success`;
     const failureKey = `${key}.failure`;
@@ -47,7 +38,7 @@ async function triggerAndCheck(key, response) {
         });
     });
     webHooks.trigger(key, response, {
-        secret: signInput(JSON.stringify(response)),
+        secret: signInput(stringify(response)),
     });
     const result = await listener;
     return result === "success";
@@ -86,14 +77,14 @@ async function blockWatcher() {
                                     assetId,
                                 });
                                 if (isPaid) {
-                                    const response = orderKeysAlphabetically({
+                                    const response = {
                                         toId,
                                         price,
                                         orderId,
                                         assetId: assetId || 'Native',
                                         remark,
                                         fromId,
-                                    });
+                                    };
                                     const result = await triggerAndCheck(key, response, 3);
                                     if (result) {
                                         await webHooks.remove(key);

@@ -15,6 +15,7 @@ const { canFundNowGraphQL, getLastFundingTime, FAUCET_CONFIG } = require("../uti
 
 const { apiPromise } = require("../utils/polkadot");
 const config = require("../../config");
+const { processHolders } = require("../../api-tools/src/lld-holders-processor");
 
 router.get(
 	"/healthcheck",
@@ -776,6 +777,13 @@ router.get(
 			console.error("Faucet cooldown check error:", error);
 			res.status(500).json({ error: error.message || "Failed to check cooldown status" });
 		}
+	}),
+);
+
+router.get(
+	"/top-holders",
+	wrap(async (_, res) => {
+		res.status(200).json((await processHolders()).slice(0, 100));
 	}),
 );
 

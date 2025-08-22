@@ -1,5 +1,6 @@
 const { ApiPromise, WsProvider } = require("@polkadot/api");
 const { BN } = require("@polkadot/util");
+const config = require("../../config");
 
 const formatBalance = (v) => v.div(new BN(1000000000000)).toString();
 
@@ -29,7 +30,7 @@ const known_addresses = {
 
 
 const processHolders = async () => {
-    const wsProvider = new WsProvider("wss://mainnet.liberland.org");
+    const wsProvider = new WsProvider(config.RPC_NODE_URL);
 	const api = await ApiPromise.create({ provider: wsProvider });
 
 	const data = {};

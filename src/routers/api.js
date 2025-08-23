@@ -16,6 +16,7 @@ const { canFundNowGraphQL, getLastFundingTime, FAUCET_CONFIG } = require("../uti
 const { apiPromise } = require("../utils/polkadot");
 const config = require("../../config");
 const { processHolders } = require("../../api-tools/src/lld-holders-processor");
+const { triggerOrder } = require("../utils/events");
 
 router.get(
 	"/healthcheck",
@@ -600,6 +601,9 @@ router.get(
 				assetId,
 				minBlockNumber: lastBlockNumber - 10000,
 			});
+			if (paid) {
+				await triggerOrder({ orderId });
+			}
 			res.send({ paid });
 		} catch (e) {
 			res.status(400).json({ error: e.message });

@@ -44,9 +44,72 @@ async function triggerAndCheck(key, response) {
     return result === "success";
 }
 
+async function processOrder({
+    currentBlockNumber,
+    key,
+}) {
+    const oldest = 10000;
+    try {
+        if (key.startsWith("order-")) {
+            const [orderId, contents] = key.split("-").slice(1);
+            const {
+                toId,
+                price,
+                assetId,
+                minBlockNumber,
+                lastBlockNumber,
+            } = JSON.parse(Buffer.from(contents, "base64").toString("utf-8"));
+            if (currentBlockNumber - lastBlockNumber > oldest) {
+                await webHooks.remove(key);
+            } else {
+                const [isPaid, remark, fromId] = await verifyPurchase({
+                    toId,
+                    minBlockNumber,
+                    orderId,
+                    price,
+                    assetId,
+                });
+                if (isPaid) {
+                    const response = {
+                        toId,
+                        price,
+                        orderId,
+                        assetId: assetId || 'Native',
+                        remark,
+                        fromId,
+                    };
+                    const result = await triggerAndCheck(key, response, 3);
+                    if (result) {
+                        await webHooks.remove(key);
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.error(e);
+        await webHooks.remove(key);
+    }
+}
+
+async function triggerOrder({
+    orderId
+}) {
+    const api = await apiPromise;
+    const header = await api.rpc.chain.getHeader();
+    const currentBlockNumber = header.number;
+    const registered = listHooks();
+    const entries = Object.keys(registered);
+    const key = entries.find((entry) => entry.startsWith("order-") && entry.split("-")[1] === orderId);
+    if (key) {
+        await processOrder({
+            currentBlockNumber,
+            key,
+        });
+    }
+}
+
 async function blockWatcher() {
     const interval = 3;
-    const oldest = 10000;
     const api = await apiPromise;
 
     api.rpc.chain.subscribeNewHeads(async (lastHeader) => {
@@ -56,46 +119,7 @@ async function blockWatcher() {
                 const registered = listHooks();
                 const entries = Object.keys(registered);
                 await Promise.all(entries.map(async (key) => {
-                    try {
-                        if (key.startsWith("order-")) {
-                            const {
-                                toId,
-                                price,
-                                orderId,
-                                assetId,
-                                minBlockNumber,
-                                lastBlockNumber,
-                            } = JSON.parse(Buffer.from(key.split("order-")[1], "base64").toString("utf-8"));
-                            if (currentBlockNumber - lastBlockNumber > oldest) {
-                                await webHooks.remove(key);
-                            } else {
-                                const [isPaid, remark, fromId] = await verifyPurchase({
-                                    toId,
-                                    minBlockNumber,
-                                    orderId,
-                                    price,
-                                    assetId,
-                                });
-                                if (isPaid) {
-                                    const response = {
-                                        toId,
-                                        price,
-                                        orderId,
-                                        assetId: assetId || 'Native',
-                                        remark,
-                                        fromId,
-                                    };
-                                    const result = await triggerAndCheck(key, response, 3);
-                                    if (result) {
-                                        await webHooks.remove(key);
-                                    }
-                                }
-                            }
-                        }
-                    } catch (e) {
-                        console.error(e);
-                        await webHooks.remove(key);
-                    }
+                    await processOrder({ currentBlockNumber, key });
                 }));
             }
         } catch (e) {
@@ -104,4 +128,4 @@ async function blockWatcher() {
     });
 }
 
-module.exports = { blockWatcher };
+module.exports = { blockWatcher, triggerOrder };

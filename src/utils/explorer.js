@@ -116,7 +116,7 @@ const getFromMaybeHex = (maybeHex) => {
 		// eslint-disable-next-line no-undef
 		return BigInt(maybeHex).toString();
 	}
-	return maybeHex;
+	return maybeHex.toString();
 }
 
 async function verifyPurchase({

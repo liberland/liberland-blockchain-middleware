@@ -33,6 +33,7 @@
 	"dependencies": {
 		"@polkadot/api": "^11.3.1",
 		"@polkadot/util": "^12.6.2",
+		"apicache": "^1.6.3",
 		"axios": "^1.6.2",
 		"cors": "^2.8.5",
 		"csv-stringify": "^6.5.1",

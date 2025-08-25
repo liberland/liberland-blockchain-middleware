@@ -195,10 +195,9 @@ async function createPurchase({
 	lastBlockNumber,
 	callback,
 }) {
-	const name = `order-${Buffer.from(JSON.stringify({
+	const name = `order-${orderId}-${Buffer.from(JSON.stringify({
 		toId,
 		price,
-		orderId,
 		assetId,
 		minBlockNumber,
 		lastBlockNumber,

@@ -1,6 +1,7 @@
 "use strict";
 
 const router = require("express").Router();
+const apicache = require('apicache');
 const wrap = require("express-async-handler");
 const { Keyring } = require("@polkadot/api");
 const axios = require ('axios');
@@ -17,6 +18,9 @@ const { apiPromise } = require("../utils/polkadot");
 const config = require("../../config");
 const { processHolders } = require("../../api-tools/src/lld-holders-processor");
 const { triggerOrder } = require("../utils/events");
+
+const cache = apicache.middleware;
+const CACHE_DURATION = '3 minutes';
 
 router.get(
 	"/healthcheck",
@@ -295,6 +299,7 @@ router.post(
 
 router.get(
   '/tax-payers',
+  cache(CACHE_DURATION),
   wrap(async (req, res) => {
     try {
       const api = await apiPromise;
@@ -786,6 +791,7 @@ router.get(
 
 router.get(
 	"/top-holders",
+	cache(CACHE_DURATION),
 	wrap(async (_, res) => {
 		res.status(200).json((await processHolders()).slice(0, 100));
 	}),

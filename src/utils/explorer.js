@@ -1,7 +1,7 @@
 'use strict';
 
 const axios = require("axios");
-const { hexToU8a } = require("@polkadot/util");
+const { hexToU8a, isHex } = require("@polkadot/util");
 const pako = require("pako");
 const config = require("../../config");
 const { webHooks } = require("./webhooks");
@@ -111,6 +111,14 @@ const tryDecodeRemark = async (polkadotApi, dataToDecode) => {
 	}
 };
 
+const getFromMaybeHex = (maybeHex) => {
+	if (isHex(maybeHex)) {
+		// eslint-disable-next-line no-undef
+		return BigInt(maybeHex).toString();
+	}
+	return maybeHex;
+}
+
 async function verifyPurchase({
 	toId,
 	price,
@@ -167,7 +175,7 @@ async function verifyPurchase({
 		const [decoded, type] = await tryDecodeRemark(api, remark);
 		switch (type) {
 			case "user":
-				if (decoded.id && decoded.id.toString() === orderId.toString()) { // Ensure we don't get a number here
+				if (decoded.id && getFromMaybeHex(decoded.id) === orderId.toString()) { // Ensure we don't get a number here
 					return [true, decoded.description, fromId];
 				}
 				break;

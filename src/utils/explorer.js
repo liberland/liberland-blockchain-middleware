@@ -24,20 +24,20 @@ query EraPaidEvents {
 }
 `;
 
-const taxQuery = `
+const taxQuery = ({ offset, first, startBlock }) => `
   query taxQuery {
-    taxUnPools{
+    taxUnPools(offset: ${offset}, first: ${first}, orderBy: BLOCK_NUMBER_DESC, filter: { blockNumber: { greaterThan: "${startBlock}" } }){
       nodes{
         value
         addressId
-        blockNumber
+		blockNumber
       }
     }
-    taxPools{
+    taxPools(offset: ${offset}, first: ${first}, orderBy: BLOCK_NUMBER_DESC, filter: { blockNumber: { greaterThan: "${startBlock}" } }){
       nodes{
         value
         addressId
-        blockNumber
+		blockNumber
       }
     }
   }
@@ -263,13 +263,30 @@ async function fetchAllSpendings(userId) {
 	);
 }
 
-const getTaxList = async () => {
+const getTaxList = async ({ startBlock }) => {
+	let offset = 0;
+	const first = 1000;
+	const acc = {
+		taxPools: { nodes: [] },
+		taxUnPools: { nodes: [] },
+	};
+	// eslint-disable-next-line no-constant-condition
+	while (true) {
+		// eslint-disable-next-line no-await-in-loop
+		const { data } = await getApi().post('', {
+			query: taxQuery({ first, offset, startBlock })
+		});
+		const taxPools = data.data.taxPools.nodes;
+		const taxUnPools = data.data.taxUnPools.nodes;
+		acc.taxPools.nodes.push(...taxPools);
+		acc.taxUnPools.nodes.push(...taxUnPools);
+		if (taxPools.length === 0 && taxUnPools.length === 0) {
+			break;
+		}
+		offset += first;
+	}
 
-	const { data } = await getApi().post('', {
-		query: taxQuery
-	});
-
-	return data.data;
+	return acc;
 };
 
 module.exports = {

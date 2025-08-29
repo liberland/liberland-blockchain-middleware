@@ -18,6 +18,7 @@ const { apiPromise } = require("../utils/polkadot");
 const config = require("../../config");
 const { processHolders } = require("../../api-tools/src/lld-holders-processor");
 const { triggerOrder } = require("../utils/events");
+const { formatLLDWithDecimals } = require("../utils/common");
 
 const cache = apicache.middleware;
 const CACHE_DURATION = '3 minutes';
@@ -404,7 +405,8 @@ router.get(
 
 router.get(
 	"/lld-stats",
-	wrap(async (req, res) => {
+	cache(CACHE_DURATION),
+	wrap(async (_, res) => {
 		const api = await apiPromise;
 		const currentEraOption = (await api.query.staking.currentEra()).unwrap().toNumber();
 		const events = await getLastWeekEraPaidEvents();
@@ -451,18 +453,36 @@ router.get(
 
 router.get(
 	"/total-issuance/lld",
-	wrap(async (req, res) => {
+	cache(CACHE_DURATION),
+	wrap(async (_, res) => {
 		try {
 			const api = await apiPromise;
-			let issuance = await api.query.balances.totalIssuance();
-			let fullLLDIssuance = issuance.toString();
-			fullLLDIssuance = fullLLDIssuance.substring(0, fullLLDIssuance.length - 12);
-			res.status(200).json(fullLLDIssuance);
+			const issuance = await api.query.balances.totalIssuance();
+			const fullLLDIssuance = formatLLDWithDecimals(issuance);
+			res.status(200).json({ result: fullLLDIssuance });
 		} catch(e) {
 			res.status(400).json({ error: e.message })
 		}
-	})
+	}),
 );
+
+router.get(
+	"/liquid-available/lld",
+	cache(CACHE_DURATION),
+	wrap(async (_, res) => {
+		try {
+			const api = await apiPromise;
+			const issuance = await api.query.balances.totalIssuance();
+			const era = (await api.query.staking.activeEra()).unwrap().index;
+			const totalStaked = await api.query.staking.erasTotalStake(era);
+			const liquidSupply = issuance.sub(totalStaked);
+			const liquidLLD = formatLLDWithDecimals(liquidSupply);
+			res.status(200).json({ result: liquidLLD });
+		} catch(e) {
+			res.status(400).json({ error: e.message })
+		}
+	}),
+)
 
 router.get(
 	"/election-data",

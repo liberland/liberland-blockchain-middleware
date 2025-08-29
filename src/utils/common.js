@@ -1,5 +1,7 @@
 'use strict';
 
+const { formatBalance } = require("@polkadot/util");
+
 function hasNull(target, requiredKeys) {
 	for (const member of requiredKeys) {
 		if (!target[member]) return true;
@@ -68,9 +70,14 @@ function parsePackageJsonMultiline(value) {
 	}
 }
 
+function formatLLDWithDecimals(lldBN) {
+	return formatBalance(lldBN, { decimals: 12, withAll: true, withUnit: false, forceUnit: '-', withSi: false }).replace(/,/gu, '');
+}
+
 module.exports = {
 	hasNull,
 	isEmpty,
 	deepMerge,
 	parsePackageJsonMultiline,
+	formatLLDWithDecimals,
 };

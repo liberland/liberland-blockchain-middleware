@@ -480,7 +480,7 @@ router.get(
 	cache(CACHE_DURATION),
 	wrap(async (_, res) => {
 		try {
-			res.status(200).json(Number(await getTotalIssuance()));
+			res.status(200).json(await getTotalIssuance({ asNumber: true }));
 		} catch(e) {
 			res.status(400).json({ error: e.message })
 		}
@@ -492,7 +492,7 @@ router.get(
 	cache(CACHE_DURATION),
 	wrap(async (_, res) => {
 		try {
-			res.status(200).json(Number(await getLiquidAvailable()));
+			res.status(200).json(await getLiquidAvailable({ asNumber: true }));
 		} catch(e) {
 			res.status(400).json({ error: e.message })
 		}

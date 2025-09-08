@@ -117,19 +117,19 @@ const apiPromise = ApiPromise.create({
     },
 });
 
-async function getLiquidAvailable() {
+async function getLiquidAvailable({ asNumber } = {}) {
     const api = await apiPromise;
     const issuance = await api.query.balances.totalIssuance();
     const era = (await api.query.staking.activeEra()).unwrap().index;
     const totalStaked = await api.query.staking.erasTotalStake(era);
     const liquidSupply = issuance.sub(totalStaked);
-    return formatLLDWithDecimals(liquidSupply);
+    return asNumber ? Number(liquidSupply.toString()) : formatLLDWithDecimals(liquidSupply);
 }
 
-async function getTotalIssuance() {
+async function getTotalIssuance({ asNumber } = {}) {
     const api = await apiPromise;
     const issuance = await api.query.balances.totalIssuance();
-    return formatLLDWithDecimals(issuance);
+    return asNumber ? Number(issuance.toString()) : formatLLDWithDecimals(issuance);
 }
 
 module.exports = { apiPromise, getLiquidAvailable, getTotalIssuance };

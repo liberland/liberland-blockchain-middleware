@@ -300,7 +300,13 @@ router.post(
 
 router.get(
   '/tax-payers',
-  cache(CACHE_DURATION),
+  cache(
+    CACHE_DURATION,
+    undefined,
+    {
+      appendKey: (req) => `${req.query.limit}/${req.query.months}`
+    }
+  ),
   wrap(async (req, res) => {
     try {
       const api = await apiPromise;
@@ -313,49 +319,40 @@ router.get(
       const blocksInDay = (3600 * 24) / 6;
       const blocksInMonth = blocksInDay * 30.44;
       const startBlock = Math.floor(lastBlock - (months * blocksInMonth));
-
-      console.log('limit')
-      console.log(limit)
-
-      const tax = await getTaxList();
-
-			const filteredData = tax.taxPools.nodes.reduce(
-				(acc, { addressId, value, blockNumber }) => {
-					const numericValue = Number(value);
-
-					if (blockNumber >= startBlock) {
-						if (!acc[addressId]) {
-							acc[addressId] = 0;
-						}
-						acc[addressId] += numericValue;
-					}
-
-					return acc;
-				},
-				{}
-			);
-
-      const totalsByAddressUnpool = tax.taxUnPools.nodes.reduce((acc, { addressId, value, blockNumber }) => {
-        const numericValue = Number(value);
-
-        if (blockNumber >= startBlock) {
+  
+      const tax = await getTaxList({ startBlock });
+      
+      const filteredData = tax.taxPools.nodes.reduce(
+        (acc, { addressId, value }) => {
+          const numericValue = Number(value);
           if (!acc[addressId]) {
             acc[addressId] = 0;
           }
           acc[addressId] += numericValue;
+
+          return acc;
+        },
+        {}
+      );
+
+      const totalsByAddressUnpool = tax.taxUnPools.nodes.reduce((acc, { addressId, value }) => {
+        const numericValue = Number(value);
+        if (!acc[addressId]) {
+          acc[addressId] = 0;
         }
+        acc[addressId] += numericValue;
 
         return acc;
       }, {});
 
-			const totalPoolData = politics.map(([{ args: key }, valueData]) => {
-				const totalValue = Number(valueData.toString());
-				const addressId = key.toString();
+      const totalPoolData = politics.map(([{ args: key }, valueData]) => {
+        const totalValue = Number(valueData.toString());
+        const addressId = key.toString();
 
-				return { totalValue, addressId };
-			});
+        return { totalValue, addressId };
+      });
 
-			const sortedTotalsByAddressPoolTotal = totalPoolData.sort((a, b) => b.totalValue - a.totalValue).slice(0, limit);
+      const sortedTotalsByAddressPoolTotal = totalPoolData.sort((a, b) => b.totalValue - a.totalValue).slice(0, limit);
 
       const sortedPoolTotals = Object.entries(filteredData)
         .map(([addressId, totalValue]) => ({ addressId, totalValue }))
@@ -369,9 +366,9 @@ router.get(
         .slice(0, limit);
 
       res.status(200).json({
-		  sortedPoolTotals,
-		  sortedUnpoolTotals,
-		  sortedTotalsByAddressPoolTotal
+        sortedPoolTotals,
+        sortedUnpoolTotals,
+        sortedTotalsByAddressPoolTotal
       });
     } catch (e) {
       res.status(400).json({ error: e.message });

@@ -54,29 +54,6 @@ const getLastWeekEraPaidEvents = async () => {
 	return data.data.events.nodes.map(v => v.data);
 };
 
-
-async function queryAllPages(query, variables, ...keys) {
-	const { data } = await getApi().post('', {
-		query, variables
-	});
-	return keys.flatMap(key => {
-		const additionalInfo = (() => {
-			switch (key) {
-				case "merits":
-					return { asset: "LLM" };
-				case "transfers":
-					return { asset: "LLD" };
-				default:
-					return {};
-			}
-		})();
-		return data
-			.data[key]
-			.nodes
-			.map((d) => ({ ...d, ...additionalInfo }));
-	}).sort(({ block: aBlock }, { block: bBlock }) => parseInt(bBlock.number, 10) - parseInt(aBlock.number, 10));
-}
-
 const tryDecodeGovtRemark = (polkadotApi, decompressed) => {
 	try {
 		return polkadotApi.createType('RemarkInfo', decompressed).toJSON();
@@ -214,53 +191,80 @@ async function createPurchase({
 }
 
 async function fetchAllSpendings(userId) {
-	return queryAllPages(
-		`
-		query Spending($userId: String) {
-			merits(filter: { fromId: { equalTo: $userId } }) {
-				nodes {
-					id
-					toId
-					value
-					remark
-					block {
-						number
-						timestamp
+	const apiResults = [];
+	const first = 30;
+	let offset = 0;
+	// eslint-disable-next-line no-constant-condition
+	while (true) {
+		const parameters = {
+			query: `query Spending($userId: String, $first: Int, $offset: Int) {
+				merits(filter: { fromId: { equalTo: $userId } }, first: $first, offset: $offset) {
+					nodes {
+						id
+						toId
+						value
+						remark
+						block {
+							number
+							timestamp
+						}
 					}
 				}
-			}
-			transfers(filter: { fromId: { equalTo: $userId } }) {
-				nodes {
-					id
-					toId
-					value
-					remark
-					block {
-						number
-						timestamp
+				transfers(filter: { fromId: { equalTo: $userId } }, first: $first, offset: $offset) {
+					nodes {
+						id
+						toId
+						value
+						remark
+						block {
+							number
+							timestamp
+						}
 					}
 				}
-			}
-			assetTransfers(filter: { asset: { notEqualTo: "1" }, fromId: { equalTo: $userId } }) {
-				nodes {
-					id
-					asset
-					toId
-					value
-					remark
-					block {
-						number
-						timestamp
+				assetTransfers(filter: { asset: { notEqualTo: "1" }, fromId: { equalTo: $userId } }, first: $first, offset: $offset) {
+					nodes {
+						id
+						asset
+						toId
+						value
+						remark
+						block {
+							number
+							timestamp
+						}
 					}
 				}
-			}
+			}`,
+			variables: { userId, first, offset }
+		};
+		// eslint-disable-next-line no-await-in-loop
+		const { data } = await getApi().post('', parameters);
+		const apiResult = ["merits", "transfers", "assetTransfers"].flatMap(key => {
+			const additionalInfo = (() => {
+				switch (key) {
+					case "merits":
+						return { asset: "LLM" };
+					case "transfers":
+						return { asset: "LLD" };
+					default:
+						return {};
+				}
+			})();
+
+			return data
+				.data[key]
+				.nodes
+				.map((d) => ({ ...d, ...additionalInfo }));
+		});
+		if (apiResult.length === 0) {
+			break;
 		}
-		`,
-		{ userId },
-		"merits",
-		"transfers",
-		"assetTransfers",
-	);
+		apiResults.push(...apiResult);
+		offset += first;
+	}
+
+	return apiResults.sort(({ block: aBlock }, { block: bBlock }) => parseInt(bBlock.number, 10) - parseInt(aBlock.number, 10))
 }
 
 const getTaxList = async () => {

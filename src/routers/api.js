@@ -534,6 +534,13 @@ router.get(
 
 router.get(
 	"/government-spendings/:walletAddress",
+	cache(
+		CACHE_DURATION,
+		undefined,
+		{
+			appendKey: (req) => `${req.params.walletAddress}`
+		}
+	),
 	wrap(async (req, res) => {
 		try {
 			const { walletAddress } = req.params;
@@ -553,6 +560,13 @@ router.get(
 
 router.get(
 	"/government-spendings-csv/:walletAddress",
+	cache(
+		CACHE_DURATION,
+		undefined,
+		{
+			appendKey: (req) => `${req.params.walletAddress}`
+		}
+	),
 	wrap(async (req, res) => {
 		try {
 			const { walletAddress } = req.params;

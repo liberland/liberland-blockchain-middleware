@@ -14,7 +14,7 @@ const {formatSpendings} = require("../utils/government-spendings");
 const { isTestnetOrLocal } = require("../utils/environment");
 const { canFundNowGraphQL, getLastFundingTime, FAUCET_CONFIG } = require("../utils/faucet-graphql");
 
-const { apiPromise } = require("../utils/polkadot");
+const { apiPromise, getTotalIssuance, getLiquidAvailable } = require("../utils/polkadot");
 const config = require("../../config");
 const { processHolders } = require("../../api-tools/src/lld-holders-processor");
 const { triggerOrder } = require("../utils/events");
@@ -456,10 +456,7 @@ router.get(
 	cache(CACHE_DURATION),
 	wrap(async (_, res) => {
 		try {
-			const api = await apiPromise;
-			const issuance = await api.query.balances.totalIssuance();
-			const fullLLDIssuance = formatLLDWithDecimals(issuance);
-			res.status(200).json({ result: fullLLDIssuance });
+			res.status(200).json({ result: await getTotalIssuance() });
 		} catch(e) {
 			res.status(400).json({ error: e.message })
 		}
@@ -471,13 +468,31 @@ router.get(
 	cache(CACHE_DURATION),
 	wrap(async (_, res) => {
 		try {
-			const api = await apiPromise;
-			const issuance = await api.query.balances.totalIssuance();
-			const era = (await api.query.staking.activeEra()).unwrap().index;
-			const totalStaked = await api.query.staking.erasTotalStake(era);
-			const liquidSupply = issuance.sub(totalStaked);
-			const liquidLLD = formatLLDWithDecimals(liquidSupply);
-			res.status(200).json({ result: liquidLLD });
+			res.status(200).json({ result: await getLiquidAvailable() });
+		} catch(e) {
+			res.status(400).json({ error: e.message })
+		}
+	}),
+)
+
+router.get(
+	"/total-issuance/lld/numeric",
+	cache(CACHE_DURATION),
+	wrap(async (_, res) => {
+		try {
+			res.status(200).json(await getTotalIssuance({ asNumber: true }));
+		} catch(e) {
+			res.status(400).json({ error: e.message })
+		}
+	}),
+);
+
+router.get(
+	"/liquid-available/lld/numeric",
+	cache(CACHE_DURATION),
+	wrap(async (_, res) => {
+		try {
+			res.status(200).json(await getLiquidAvailable({ asNumber: true }));
 		} catch(e) {
 			res.status(400).json({ error: e.message })
 		}

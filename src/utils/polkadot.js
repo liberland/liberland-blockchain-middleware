@@ -2,6 +2,7 @@
 
 const { ApiPromise, WsProvider } = require("@polkadot/api");
 const config = require("../../config");
+const { formatLLDWithDecimals } = require("./common");
 
 const provider = new WsProvider(config.RPC_NODE_URL);
 const apiPromise = ApiPromise.create({
@@ -116,4 +117,19 @@ const apiPromise = ApiPromise.create({
     },
 });
 
-module.exports = { apiPromise };
+async function getLiquidAvailable({ asNumber } = {}) {
+    const api = await apiPromise;
+    const issuance = await api.query.balances.totalIssuance();
+    const era = (await api.query.staking.activeEra()).unwrap().index;
+    const totalStaked = await api.query.staking.erasTotalStake(era);
+    const liquidSupply = issuance.sub(totalStaked);
+    return asNumber ? Number(liquidSupply.toString()) : formatLLDWithDecimals(liquidSupply);
+}
+
+async function getTotalIssuance({ asNumber } = {}) {
+    const api = await apiPromise;
+    const issuance = await api.query.balances.totalIssuance();
+    return asNumber ? Number(issuance.toString()) : formatLLDWithDecimals(issuance);
+}
+
+module.exports = { apiPromise, getLiquidAvailable, getTotalIssuance };

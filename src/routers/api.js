@@ -645,7 +645,7 @@ router.get(
 			const api = await apiPromise;
 			const lastHeader = await api.rpc.chain.getHeader();
 			const lastBlockNumber = lastHeader.number.toNumber();
-			const [paid] = await verifyPurchase({
+			const [paid, description, fromId] = await verifyPurchase({
 				orderId,
 				price,
 				toId,
@@ -655,7 +655,7 @@ router.get(
 			if (paid) {
 				await triggerOrder({ orderId });
 			}
-			res.send({ paid });
+			res.send({ paid, description, fromId });
 		} catch (e) {
 			res.status(400).json({ error: e.message });
 		}

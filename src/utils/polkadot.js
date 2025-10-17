@@ -123,13 +123,15 @@ async function getLiquidAvailable({ asNumber } = {}) {
     const era = (await api.query.staking.activeEra()).unwrap().index;
     const totalStaked = await api.query.staking.erasTotalStake(era);
     const liquidSupply = issuance.sub(totalStaked);
-    return asNumber ? Number(liquidSupply.toString()) : formatLLDWithDecimals(liquidSupply);
+    const formatted = formatLLDWithDecimals(liquidSupply);
+    return asNumber ? Number(formatted) : formatted;
 }
 
 async function getTotalIssuance({ asNumber } = {}) {
     const api = await apiPromise;
     const issuance = await api.query.balances.totalIssuance();
-    return asNumber ? Number(issuance.toString()) : formatLLDWithDecimals(issuance);
+    const formatted = formatLLDWithDecimals(issuance);
+    return asNumber ? Number(formatted) : formatted;
 }
 
 module.exports = { apiPromise, getLiquidAvailable, getTotalIssuance };

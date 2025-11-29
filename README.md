@@ -39,6 +39,19 @@ openssl genpkey -algorithm RSA -out private_key.pem -pkeyopt rsa_keygen_bits:204
 openssl rsa -pubout -in private_key.pem -out public_key.pem
 ```
 
+### Using the X API
+
+In order to use the X api, you must generate a free key from [X developer portal](https://developer.x.com).
+Paste the key into the file x-keys.json in the parent project folder like this:
+
+```json
+
+{
+    "bearerToken": "tokenkey"
+}
+
+```
+
 Share public_key with any API consumers that need to verify the API results
 
 ### Running

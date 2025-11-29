@@ -2,11 +2,14 @@
 
 const router = require("express").Router();
 const apicache = require('apicache');
+const fs = require('fs');
+const path = require("path");
 const wrap = require("express-async-handler");
 const { Keyring } = require("@polkadot/api");
 const axios = require ('axios');
 const {BN, BN_ONE, BN_ZERO, BN_MILLION } = require("@polkadot/util")
 const { stringify } = require("csv-stringify/sync");
+const { TwitterApi } = require('twitter-api-v2');
 
 const generateCertificate = require('./generate-certificate')
 const { getLastWeekEraPaidEvents, getTaxList, fetchAllSpendings, verifyPurchase, createPurchase } = require("../utils/explorer");
@@ -22,6 +25,11 @@ const { formatLLDWithDecimals } = require("../utils/common");
 
 const cache = apicache.middleware;
 const CACHE_DURATION = '3 minutes';
+const keyFilePath = path.join(__dirname, '..', '..', 'x-keys.json');
+const keys =
+	fs.existsSync(keyFilePath)
+	&& fs.readFileSync(keyFilePath, 'utf-8');
+
 
 router.get(
 	"/healthcheck",
@@ -600,6 +608,35 @@ router.get(
 		}
 	})
 );
+
+router.get(
+	"/x/:handle",
+	cache(
+		CACHE_DURATION,
+		undefined,
+		{
+			appendKey: (req) => `${req.params.handle}`
+		}
+	),
+	wrap(async (req, res) => {
+		if (!keys) {
+			res.send(500).end();
+		} else {
+			try {
+				const { bearerToken } = JSON.parse(keys);
+				const twitterClient = new TwitterApi(bearerToken);
+				const readOnlyClient = twitterClient.readOnly;
+				const user = await readOnlyClient.v2.userByUsername(req.params.handle, {
+					'user.fields': ['description', 'name', 'profile_image_url', 'profile_banner_url'],
+				});
+				res.status(200).send(user);
+			} catch (e) {
+				console.error(e);
+				res.send(400);
+			}
+		}
+	}),
+)
 
 router.post(
 	"/create-purchase",

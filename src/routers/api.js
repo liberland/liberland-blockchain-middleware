@@ -202,9 +202,20 @@ router.post(
 		let centralizedCheckPromises = []
 
 		let checkEligibleForPersonIdPromise = new Promise((resolve, reject) => {
-			centralizedAPI.get('/e-residents/approved/me').then((result) => {
-				if(result.status !== 200) {
-					return reject('You are not a fully approved e-resident or citizen, therefore are not eligible to claim onboarding LLDs');
+			centralizedAPI.get('/e-residents/me').then((result) => {
+				const notResidentReason = 'You are not a fully approved e-resident or citizen, therefore are not eligible to claim onboarding LLDs';
+				if (result.status !== 200) {
+					return reject(notResidentReason);
+				}
+				const resident = result.data;
+				const isNotVerified = !resident
+					|| resident.isBanned
+					|| !resident.eResidencyApplication
+					|| !resident.eResidencyApplication.status
+					|| !resident.eResidencyApplication.status.seq
+					|| resident.eResidencyApplication.status.seq < 3;
+				if (isNotVerified) {
+					return reject(notResidentReason);
 				}
 				if(result.data.claimedOnboardingLld !== false) {
 					return reject('Person already claimed onboarding LLD');

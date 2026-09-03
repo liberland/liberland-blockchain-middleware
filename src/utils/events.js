@@ -1,31 +1,25 @@
 "use strict";
 
 const debug = require('debug')('events');
-const { createSign } = require("crypto");
-const stringify = require('json-stable-stringify');
-const { readFileSync, existsSync } = require("fs");
-const path = require("path");
+const {
+    serializePayload,
+    signBody,
+    callbackHeaders,
+    DEFAULT_KEY_PATH,
+} = require("./callback-signature");
 const { verifyPurchase } = require("./explorer");
 const { apiPromise } = require("./polkadot");
 const { listHooks, webHooks } = require("./webhooks");
 
-const pathToPrivate = path.join(__dirname, "..", "..", "private_key.pem");
-
-function signInput(input) {
-    if (!existsSync(pathToPrivate)) {
-        return null;
-    }
-    const privateKey = readFileSync(pathToPrivate, "utf8");
-  
-    const sign = createSign("SHA256");
-    sign.update(String(input));
-    sign.end();
-  
-    const signature = sign.sign(privateKey, "base64");
-    return signature;
-}
-
 async function triggerAndCheck(key, response) {
+    const signature = signBody(serializePayload(response));
+    if (signature === null) {
+        console.error(
+            `Refusing to deliver callback ${key}: no signing key at ${DEFAULT_KEY_PATH}.`,
+            "Generate one as described in the README. The hook stays registered and will be retried.",
+        );
+        return false;
+    }
     const successKey = `${key}.success`;
     const failureKey = `${key}.failure`;
     const listener = new Promise((resolve) => {
@@ -37,9 +31,7 @@ async function triggerAndCheck(key, response) {
             resolve("error");
         });
     });
-    webHooks.trigger(key, response, {
-        secret: signInput(stringify(response)),
-    });
+    webHooks.trigger(key, response, callbackHeaders(signature));
     const result = await listener;
     return result === "success";
 }

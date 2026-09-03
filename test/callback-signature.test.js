@@ -7,7 +7,11 @@ const { mkdtempSync, writeFileSync, rmSync } = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const { serializePayload, signBody } = require("../src/utils/callback-signature");
+const {
+	serializePayload,
+	signBody,
+	callbackHeaders,
+} = require("../src/utils/callback-signature");
 
 const { privateKey, publicKey } = generateKeyPairSync("rsa", {
 	modulusLength: 2048,
@@ -80,6 +84,18 @@ test("a tampered body does not verify", () => {
 		const tampered = transmittedBody({ ...payload, price: "1" });
 
 		assert.strictEqual(verify(tampered, signature), false);
+	});
+});
+
+test("the signature is sent under a header consumers read", () => {
+	withKeyFile((keyPath) => {
+		const signature = signBody(serializePayload(payload), keyPath);
+		const headers = callbackHeaders(signature);
+
+		// The WooCommerce gateway reads `signature`, then `x-signature`.
+		assert.strictEqual(headers.signature, signature);
+		// `secret` stays for a compatibility window.
+		assert.strictEqual(headers.secret, signature);
 	});
 });
 

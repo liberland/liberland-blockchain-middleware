@@ -36,4 +36,22 @@ function signBody(body, keyPath = DEFAULT_KEY_PATH) {
 	return sign.sign(readFileSync(keyPath, "utf8"), "base64");
 }
 
-module.exports = { serializePayload, signBody, DEFAULT_KEY_PATH };
+/**
+ * Build the headers that carry the signature.
+ *
+ * Consumers look for `signature` (the WooCommerce gateway reads `signature`,
+ * then `x-signature`). This middleware historically sent `secret`, which no
+ * documented consumer reads, so the signature never reached a verifier. Both
+ * names are emitted for now; `secret` can be dropped once integrations have
+ * moved over.
+ */
+function callbackHeaders(signature) {
+	return { signature, secret: signature };
+}
+
+module.exports = {
+	serializePayload,
+	signBody,
+	callbackHeaders,
+	DEFAULT_KEY_PATH,
+};

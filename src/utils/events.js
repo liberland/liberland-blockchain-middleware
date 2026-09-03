@@ -1,7 +1,7 @@
 "use strict";
 
 const debug = require('debug')('events');
-const { serializePayload, signBody } = require("./callback-signature");
+const { serializePayload, signBody, callbackHeaders } = require("./callback-signature");
 const { verifyPurchase } = require("./explorer");
 const { apiPromise } = require("./polkadot");
 const { listHooks, webHooks } = require("./webhooks");
@@ -18,9 +18,8 @@ async function triggerAndCheck(key, response) {
             resolve("error");
         });
     });
-    webHooks.trigger(key, response, {
-        secret: signBody(serializePayload(response)),
-    });
+    const signature = signBody(serializePayload(response));
+    webHooks.trigger(key, response, callbackHeaders(signature));
     const result = await listener;
     return result === "success";
 }

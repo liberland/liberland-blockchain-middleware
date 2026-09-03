@@ -1,29 +1,10 @@
 "use strict";
 
 const debug = require('debug')('events');
-const { createSign } = require("crypto");
-const stringify = require('json-stable-stringify');
-const { readFileSync, existsSync } = require("fs");
-const path = require("path");
+const { serializePayload, signBody } = require("./callback-signature");
 const { verifyPurchase } = require("./explorer");
 const { apiPromise } = require("./polkadot");
 const { listHooks, webHooks } = require("./webhooks");
-
-const pathToPrivate = path.join(__dirname, "..", "..", "private_key.pem");
-
-function signInput(input) {
-    if (!existsSync(pathToPrivate)) {
-        return null;
-    }
-    const privateKey = readFileSync(pathToPrivate, "utf8");
-  
-    const sign = createSign("SHA256");
-    sign.update(String(input));
-    sign.end();
-  
-    const signature = sign.sign(privateKey, "base64");
-    return signature;
-}
 
 async function triggerAndCheck(key, response) {
     const successKey = `${key}.success`;
@@ -38,7 +19,7 @@ async function triggerAndCheck(key, response) {
         });
     });
     webHooks.trigger(key, response, {
-        secret: signInput(stringify(response)),
+        secret: signBody(serializePayload(response)),
     });
     const result = await listener;
     return result === "success";

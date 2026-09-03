@@ -1,12 +1,25 @@
 "use strict";
 
 const debug = require('debug')('events');
-const { serializePayload, signBody, callbackHeaders } = require("./callback-signature");
+const {
+    serializePayload,
+    signBody,
+    callbackHeaders,
+    DEFAULT_KEY_PATH,
+} = require("./callback-signature");
 const { verifyPurchase } = require("./explorer");
 const { apiPromise } = require("./polkadot");
 const { listHooks, webHooks } = require("./webhooks");
 
 async function triggerAndCheck(key, response) {
+    const signature = signBody(serializePayload(response));
+    if (signature === null) {
+        console.error(
+            `Refusing to deliver callback ${key}: no signing key at ${DEFAULT_KEY_PATH}.`,
+            "Generate one as described in the README. The hook stays registered and will be retried.",
+        );
+        return false;
+    }
     const successKey = `${key}.success`;
     const failureKey = `${key}.failure`;
     const listener = new Promise((resolve) => {
@@ -18,7 +31,6 @@ async function triggerAndCheck(key, response) {
             resolve("error");
         });
     });
-    const signature = signBody(serializePayload(response));
     webHooks.trigger(key, response, callbackHeaders(signature));
     const result = await listener;
     return result === "success";
